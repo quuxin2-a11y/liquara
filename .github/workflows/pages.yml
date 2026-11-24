@@ -9,15 +9,16 @@ permissions:
   id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      artifact: ${{ steps.name.outputs.artifact }}
     steps:
       - uses: actions/checkout@v4
+      - id: name
+        run: echo "artifact=site-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - name: Prepare site
         run: |
           mkdir _site
@@ -26,8 +27,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-          name: site-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.name.outputs.artifact }}
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
         with:
-          artifact_name: site-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact_name: ${{ needs.build.outputs.artifact }}
