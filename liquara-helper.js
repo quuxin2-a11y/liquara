@@ -6,9 +6,10 @@
      PRICES               JSON, e.g. {"owner_month":"price_...","owner_quarter":"price_...", ... "enterprise_year":"price_..."}
      APP_ORIGIN           where the app lives, e.g. https://getliquara.com
      MODEL                optional, Claude model name (default claude-sonnet-5-5)
+     ADMIN_KEY            a long random password for the Liquara Admin app             [secret]
    No card numbers ever touch this helper: Stripe's embedded form talks to Stripe directly. */
 
-const J = (o, s = 200, origin = "*") => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "Content-Type, X-Liquara-License, X-Liquara-Device", "Access-Control-Allow-Methods": "POST, OPTIONS" } });
+const J = (o, s = 200, origin = "*") => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "Content-Type, X-Liquara-License, X-Liquara-Device, X-Liquara-Admin", "Access-Control-Allow-Methods": "POST, OPTIONS" } });
 
 async function stripe(env, path, params, method = "POST") {
   const body = new URLSearchParams();
@@ -33,6 +34,17 @@ async function licenseFor(env, subId, device) {
   const end = (sub.current_period_end || (sub.items && sub.items.data[0] && sub.items.data[0].current_period_end) || sub.trial_end) * 1000;
   return sign(env, { p: (sub.metadata && sub.metadata.plan) || "owner", e: end + 3 * 864e5, s: sub.id, d: device || "" });
 }
+
+async function listAll(env, path, params, max = 1000) {
+  const out = []; let after;
+  while (out.length < max) {
+    const p = Object.assign({ limit: 100 }, params); if (after) p.starting_after = after;
+    const page = await stripe(env, path, p, "GET"); out.push(...page.data);
+    if (!page.has_more || !page.data.length) break; after = page.data[page.data.length - 1].id;
+  }
+  return out;
+}
+function sameKey(a, b) { a = String(a || ""); b = String(b || ""); if (!a || !b || a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
 
 async function claude(env, content, tools, maxTokens = 4000) {
   const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": env.ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" }, body: JSON.stringify({ model: env.MODEL || "claude-sonnet-5-5", max_tokens: maxTokens, tools, messages: [{ role: "user", content }] }) });
@@ -61,7 +73,7 @@ export default {
       if (path === "/checkout") {
         const prices = JSON.parse(env.PRICES || "{}"), price = prices[body.plan + "_" + body.period];
         if (!price) return J({ error: "That plan isn't set up yet" }, 400, origin);
-        const s = await stripe(env, "checkout/sessions", { ui_mode: "embedded", mode: "subscription", redirect_on_completion: "never", "line_items[0][price]": price, "line_items[0][quantity]": 1, subscription_data: { trial_period_days: body.trialDays || 14, metadata: { plan: body.plan, device: body.device || "" } }, customer_email: body.email || undefined, payment_method_collection: "always" });
+        const s = await stripe(env, "checkout/sessions", { ui_mode: "embedded", mode: "subscription", redirect_on_completion: "never", "line_items[0][price]": price, "line_items[0][quantity]": 1, subscription_data: { trial_period_days: body.trialDays || 14, metadata: { plan: body.plan, device: body.device || "" } }, customer_email: body.email || undefined, payment_method_collection: "always", metadata: { plan: body.plan, period: body.period } });
         return J({ clientSecret: s.client_secret, session: s.id }, 200, origin);
       }
       if (path === "/license") {
@@ -88,6 +100,23 @@ export default {
         else return J({ error: "Send this file as PDF, image or text" }, 400, origin);
         content.push({ type: "text", text: EXTRACT_PROMPT });
         return J(await claude(env, content, undefined, 16000), 200, origin);
+      }
+      if (path === "/admin") {
+        if (!env.ADMIN_KEY) return J({ error: "Add an ADMIN_KEY secret to the helper first" }, 403, origin);
+        if (!sameKey(req.headers.get("X-Liquara-Admin"), env.ADMIN_KEY)) return J({ error: "Wrong admin key" }, 401, origin);
+        const since = Math.floor(Date.now() / 1000) - 60 * 864e2;
+        const [subs, sessions] = await Promise.all([
+          listAll(env, "subscriptions", { status: "all", "expand[]": "data.customer" }),
+          listAll(env, "checkout/sessions", { "created[gte]": since }, 500)
+        ]);
+        const subOut = subs.map(s => {
+          const it = (s.items && s.items.data && s.items.data[0]) || {}, pr = it.price || {}, rc = pr.recurring || {}, c = typeof s.customer === "object" ? s.customer : { id: s.customer };
+          return { id: s.id, status: s.status, plan: (s.metadata && s.metadata.plan) || pr.nickname || "", interval: rc.interval || "month", every: rc.interval_count || 1, amount: (pr.unit_amount || 0) * (it.quantity || 1) / 100, currency: (pr.currency || s.currency || "usd").toUpperCase(),
+            created: s.created, trialEnd: s.trial_end, periodEnd: s.current_period_end || it.current_period_end || null, cancelAtEnd: !!s.cancel_at_period_end, canceledAt: s.canceled_at, endedAt: s.ended_at,
+            customer: { id: c.id, email: c.email || "", name: c.name || "", phone: c.phone || "" } };
+        });
+        const sesOut = sessions.filter(s => s.mode === "subscription").map(s => ({ id: s.id, status: s.status, created: s.created, email: (s.customer_details && s.customer_details.email) || s.customer_email || "", name: (s.customer_details && s.customer_details.name) || "", amount: (s.amount_total || 0) / 100, currency: (s.currency || "usd").toUpperCase(), customer: typeof s.customer === "string" ? s.customer : s.customer && s.customer.id || null, subscription: typeof s.subscription === "string" ? s.subscription : s.subscription && s.subscription.id || null, plan: (s.metadata && s.metadata.plan) || "" }));
+        return J({ at: Date.now(), live: String(env.STRIPE_SECRET || "").startsWith("sk_live"), subscriptions: subOut, sessions: sesOut }, 200, origin);
       }
       if (path === "/translate") {
         if (!req.headers.get("X-Liquara-Device") && !req.headers.get("X-Liquara-License")) return J({ error: "Unknown device" }, 401, origin);
