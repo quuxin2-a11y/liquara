@@ -1,7 +1,7 @@
 /* Liquara helper: a Cloudflare Worker.
    Paste this whole file into a new Cloudflare Worker, then add these settings (Settings → Variables and Secrets):
      STRIPE_SECRET        your Stripe secret key (sk_live_... or sk_test_...)              [secret]
-     LICENSE_KEY          the private key from setup-keys.html                             [secret]
+     LICENSE_KEY          the private key from getliquara.com/setup-keys                          [secret]
      ANTHROPIC_KEY        your Claude API key (for AI reading and the savings finder)      [secret]
      PRICES               JSON, e.g. {"owner_month":"price_...","owner_quarter":"price_...", ... "enterprise_year":"price_..."}
      APP_ORIGIN           where the app lives, e.g. https://getliquara.com
@@ -88,7 +88,7 @@ export default {
       if (path === "/portal") {
         const p = readCode(req.headers.get("X-Liquara-License")); if (!p || !p.s) return J({ error: "Subscribe first" }, 400, origin);
         const sub = await stripe(env, "subscriptions/" + p.s, null, "GET");
-        const ps = await stripe(env, "billing_portal/sessions", { customer: sub.customer, return_url: (env.APP_ORIGIN || "https://getliquara.com") + "/app.html" });
+        const ps = await stripe(env, "billing_portal/sessions", { customer: sub.customer, return_url: (env.APP_ORIGIN || "https://getliquara.com") + "/app" });
         return J({ url: ps.url }, 200, origin);
       }
       if (path === "/extract") {

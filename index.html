@@ -2,82 +2,148 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Liquara · Cash intelligence connected to the heart of your business</title>
 <meta name="description" content="Liquara reads any financial data, from any bank, forecasts cash with odds, tests itself on your own history, finds savings and answers the questions owners, CFOs and boards ask.">
-<meta name="theme-color" content="#070b16">
+<meta name="theme-color" content="#05080f">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:title" content="Liquara · Cash intelligence">
-<meta property="og:description" content="Know exactly where your cash is going, with odds. From mom-and-pop shops to $1B groups.">
+<meta property="og:description" content="Know where your cash is going, with odds. From corner shops to $1B groups.">
 <meta property="og:image" content="site-desktop.jpg">
+<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload")location.replace("app");else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="site.css">
 </head>
-<body>
-<header class="nav"><div class="wrap row"><a class="brand" href="#"><img src="logo.svg" alt="" width="30" height="30">Liquara</a><nav><a href="#how">How it works</a><a href="#views">Views</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav><a class="btn pri" href="app.html">Start free</a></div></header>
+<body class="home">
+<header class="nav"><div class="wrap row"><a class="brand" href="#top" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30">Liquara</a><nav><a href="#how">How it works</a><a href="#views">Views</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#mobile">Mobile app</a><a href="#founder">About</a><a href="#contact">Contact</a></nav><a class="btn pri" href="app">Start free</a></div></header>
+<nav class="mnav"><a href="#how">How it works</a><a href="#views">Views</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#mobile">Mobile app</a><a href="#founder">About</a><a href="#faq">FAQ</a><a href="#contact">Contact</a></nav>
 
-<section class="hero"><div class="wrap grid2">
-  <div>
-    <div class="eyebrow">Cash intelligence connected to the heart of your business</div>
-    <h1>Know where your cash is going. <span class="lime">With odds.</span></h1>
-    <p class="lead">Liquara reads whatever data you have, from any bank, in any format. It forecasts your cash 13 weeks and 12 months ahead, grades itself on your own history before you trust it, finds savings, and answers the questions owners, CFOs and boards actually ask.</p>
-    <div class="row cta"><a class="btn pri big" href="app.html">Try it free for 14 days</a><a class="btn big" href="app.html">Watch the 60-second walkthrough</a></div>
-    <p class="tiny">No setup call. Pick your size, see a sample company like yours, then connect your own data.</p>
+<!-- 1. HERO -->
+<section class="hero" id="top">
+  <canvas id="flow" aria-hidden="true"></canvas>
+  <div class="hero-in wrap">
+    <div class="eyebrow rv">Cash intelligence connected to the heart of your business</div>
+    <h1 class="rv">Know where your cash is going. <em>With odds.</em></h1>
+    <p class="lead rv">Liquara reads whatever data you have, from any bank, in any format. It forecasts your cash 13 weeks and 12 months ahead, grades itself on your own history, finds savings, and answers what owners, CFOs and boards actually ask.</p>
+    <div class="row cta rv"><a class="btn pri big" href="app">Try it free for 14 days</a><a class="btn ghost big" href="app">Watch the 60-second walkthrough</a></div>
+    <p class="tiny rv">No setup call. Explore a sample company your size, then start your free trial to connect your own data.</p>
   </div>
-  <div class="shot"><img src="site-desktop.jpg" alt="Liquara dashboard on a laptop: cash today, 13-week forecast with range, alerts and best move"></div>
-</div></section>
+  <a class="scroll" href="#story" aria-label="Scroll down"><span></span></a>
+</section>
 
+<!-- 2. THE PROBLEM, word by word -->
+<section id="story" class="chapter">
+  <div class="wrap narrow"><p class="scrub" id="scrub">Your bank balance shows the past. Payroll, rent, taxes and the customer who always pays late are already on their way. <b>Liquara shows you where it all lands, before it lands.</b></p></div>
+</section>
+
+<!-- 3. STATS -->
 <section class="stats"><div class="wrap three">
-  <div><b>27 days</b><span>Cash the median small business holds if money stopped coming in. Half hold less than a month.</span><a href="https://www.jpmorganchase.com/institute/all-topics/business-growth-and-entrepreneurship/report-cash-flows-balances-and-buffer-days" target="_blank" rel="noopener">JPMorgan Chase Institute</a></div>
-  <div><b>18%</b><span>Owners and finance leaders who check cash flow as often as their phone.</span><a href="https://fintechtakes.com/?p=3539" target="_blank" rel="noopener">2025 BILL Report</a></div>
-  <div><b>70%</b><span>Small businesses saying payment fraud hurt their cash flow.</span><a href="https://lp.billgo.com/report-make-or-break-cash-flow" target="_blank" rel="noopener">BillGO / Ipsos</a></div>
+  <div class="rv"><b><span data-count="27">0</span> days</b><span>Cash the median small business holds if money stopped coming in. Half hold less than a month.</span><a href="https://www.jpmorganchase.com/institute/all-topics/business-growth-and-entrepreneurship/report-cash-flows-balances-and-buffer-days" target="_blank" rel="noopener">JPMorgan Chase Institute</a></div>
+  <div class="rv"><b><span data-count="18">0</span>%</b><span>Owners and finance leaders who check cash flow as often as their phone.</span><a href="https://fintechtakes.com/?p=3539" target="_blank" rel="noopener">2025 BILL Report</a></div>
+  <div class="rv"><b><span data-count="70">0</span>%</b><span>Small businesses saying payment fraud hurt their cash flow.</span><a href="https://lp.billgo.com/report-make-or-break-cash-flow" target="_blank" rel="noopener">BillGO / Ipsos</a></div>
 </div></section>
 
+<!-- 4. HOW IT WORKS -->
 <section id="how"><div class="wrap">
-  <div class="eyebrow">How it works</div><h2>Hand it anything. It does the sorting.</h2>
+  <div class="eyebrow rv">How it works</div><h2 class="rv">Hand it anything. <em>It does the sorting.</em></h2>
   <div class="cards four">
-    <div class="card"><h3>Any bank</h3><p>Chase, Wells Fargo, Byline, any credit union. Download files, corporate BAI2 / MT940 / camt.053 files, accounting exports or automatic bank connections.</p></div>
-    <div class="card"><h3>Any format</h3><p>Spreadsheets in any layout, CSV, PDFs, photos of bills, Word files, or just type "ServiceMax 1,800 a month." An AI reader files every item in the right place.</p></div>
-    <div class="card"><h3>Forecast with odds</h3><p>It learns payroll, rent, seasons and how late each customer pays, then runs 500 possible futures. You see the likely path and the range.</p></div>
-    <div class="card"><h3>Graded first</h3><p>Before you rely on it, Liquara forecasts your past from older data and shows how close it got. In our sample companies: 91–96% balance accuracy.</p></div>
+    <div class="card rv"><i>01</i><h3>Any bank</h3><p>Chase, Wells Fargo, Byline, any credit union. Bank downloads, corporate BAI2 / MT940 / camt.053 files or accounting exports.</p></div>
+    <div class="card rv"><i>02</i><h3>Any format</h3><p>Spreadsheets in any layout, CSV, PDFs, photos of bills, Word files, or just type "ServiceMax 1,800 a month." AI files every item in the right place.</p></div>
+    <div class="card rv"><i>03</i><h3>Forecast with odds</h3><p>It learns payroll, rent, seasons and how late each customer pays, then runs 500 possible futures. You see the likely path and the range.</p></div>
+    <div class="card rv"><i>04</i><h3>Graded first</h3><p>Before you rely on it, Liquara forecasts your past from older data and shows how close it got. In our sample companies: 91–96% balance accuracy.</p></div>
   </div>
 </div></section>
 
-<section id="views" class="alt"><div class="wrap">
-  <div class="eyebrow">One app, three views</div><h2>The answer each person needs, in five seconds.</h2>
-  <div class="cards three phones">
-    <figure><img src="site-owner.jpg" alt="Owner view"><figcaption><b>Owner</b> "Are we OK?" in plain words, days of cash versus businesses like yours, a 14-day surprise radar and the best next move.</figcaption></figure>
-    <figure><img src="site-cfo.jpg" alt="CFO view"><figcaption><b>CFO</b> 13-week flows, days to collect and pay, forecast versus actual, budget versus actual, currency exposure and the model's self-test.</figcaption></figure>
-    <figure><img src="site-board.jpg" alt="Board view"><figcaption><b>Board</b> A forward-looking brief, decisions with dollar values, risks, on-plan status, present mode and a PDF board pack.</figcaption></figure>
+<!-- 5. THREE VIEWS, sticky story -->
+<section id="views" class="views"><div class="wrap">
+  <div class="eyebrow rv">One web page, three views</div><h2 class="rv">The answer each person needs, <em>in five seconds.</em></h2>
+  <div class="vgrid">
+    <div class="stage" aria-hidden="true"><img src="view-owner.jpg" alt="" class="on" data-v="0"><img src="view-cfo.jpg" alt="" data-v="1"><img src="view-board.jpg" alt="" data-v="2"><div class="halo"></div></div>
+    <div class="steps">
+      <div class="step" data-v="0"><img class="mshot" src="view-owner.jpg" alt="Owner view" loading="lazy"><span class="tag">Owner</span><h3>"Are we OK?"</h3><p>In plain words. Days of cash compared with businesses like yours, a 14-day surprise radar and the single best next move.</p></div>
+      <div class="step" data-v="1"><img class="mshot" src="view-cfo.jpg" alt="CFO view" loading="lazy"><span class="tag">CFO</span><h3>The full picture.</h3><p>Last 13 weeks and next 13 weeks side by side, days to collect and pay, forecast versus actual, budget versus actual, currency exposure and the model's self-test.</p></div>
+      <div class="step" data-v="2"><img class="mshot" src="view-board.jpg" alt="Board view" loading="lazy"><span class="tag">Board</span><h3>Ready when they ask.</h3><p>A forward-looking brief, decisions with dollar values, top risks, on-plan status, present mode and a PDF board pack.</p></div>
+    </div>
   </div>
 </div></section>
 
-<section id="savings"><div class="wrap grid2">
-  <div><div class="eyebrow">Savings finder</div><h2>Paying too much for something? It checks.</h2><p class="lead">Every recurring bill, or any cost you type in or upload, is checked against live prices: similar tools for less, and different approaches that save more, with sources and dates. Confirm the quote, switch, and the action tracker measures what you saved.</p></div>
-  <div class="card list"><div><b>Payment alerts</b><span>Double charges, large first-time payees and amounts far above normal.</span></div><div><b>Decision simulator</b><span>Hires, price changes, big purchases, loans and recession tests, saved side by side.</span></div><div><b>Lender packet & Excel</b><span>Bank-ready PDF and a spreadsheet of the 13-week forecast in one tap.</span></div><div><b>Any currency</b><span>Report in yours; mixed-currency accounts converted at that day's official rate.</span></div></div>
+<!-- 6. SAVINGS -->
+<section id="savings" class="alt"><div class="wrap grid2">
+  <div><div class="eyebrow rv">Savings finder</div><h2 class="rv">Paying too much? <em>It checks.</em></h2><p class="lead rv">Every recurring bill, or any cost you type in or upload, is checked against live prices: similar tools for less, and different approaches that save more, with sources and dates. Switch, and the action tracker measures what you saved.</p></div>
+  <div class="card list rv"><div><b>Payment alerts</b><span>Double charges, large first-time payees and amounts far above normal.</span></div><div><b>Decision simulator</b><span>Hires, price changes, big purchases, loans and recession tests, saved side by side.</span></div><div><b>Lender packet & Excel</b><span>Bank-ready PDF and a spreadsheet of the 13-week forecast in one tap.</span></div><div><b>Any currency, 12 languages</b><span>Report in yours; mixed-currency accounts converted at that day's official rate.</span></div></div>
 </div></section>
 
-<section id="pricing" class="alt"><div class="wrap">
-  <div class="eyebrow">Pricing</div><h2>14 days free. Then a fair price for your size.</h2>
-  <div class="seg" role="tablist"><button data-p="1" class="on">Monthly</button><button data-p="0.9">Quarterly · save 10%</button><button data-p="0.8">Yearly · save 20%</button></div>
+<!-- 7. PRICING -->
+<section id="pricing"><div class="wrap">
+  <div class="eyebrow rv">Pricing</div><h2 class="rv">14 days free. <em>Then a fair price for your size.</em></h2>
+  <div class="seg rv" role="tablist"><button data-p="1" class="on">Monthly</button><button data-p="0.9">Quarterly · save 10%</button><button data-p="0.8">Yearly · save 20%</button></div>
   <div class="cards three">
-    <div class="card plan"><h3>Owner</h3><p class="tiny">Under $10M revenue</p><div class="price" data-m="39">$39<span>/month</span></div><ul><li>All three views, forecasts and alerts</li><li>20 AI savings checks a month</li><li>1 company</li></ul><a class="btn pri full" href="app.html">Start free trial</a></div>
-    <div class="card plan rec"><span class="badge">Most popular</span><h3>Business</h3><p class="tiny">$10M – $100M</p><div class="price" data-m="249">$249<span>/month</span></div><ul><li>Everything in Owner</li><li>100 AI savings checks a month</li><li>Up to 5 companies, budget vs actual</li></ul><a class="btn pri full" href="app.html">Start free trial</a></div>
-    <div class="card plan"><h3>Enterprise</h3><p class="tiny">$100M and up</p><div class="price" data-m="1500">$1,500<span>/month</span></div><ul><li>Unlimited companies and currencies</li><li>Corporate bank files, 500 AI checks</li><li>30-day guided pilot, priority help</li></ul><a class="btn pri full" href="app.html">Start free trial</a></div>
+    <div class="card plan rv"><h3>Owner</h3><p class="tiny">Under $10M revenue</p><div class="price" data-m="39">$39<span>/month</span></div><ul><li>All three views, forecasts and alerts</li><li>20 AI savings checks a month</li><li>1 company</li></ul><a class="btn pri full" href="app">Start free trial</a></div>
+    <div class="card plan rec rv"><span class="badge">Most popular</span><h3>Business</h3><p class="tiny">$10M – $100M</p><div class="price" data-m="249">$249<span>/month</span></div><ul><li>Everything in Owner</li><li>100 AI savings checks a month</li><li>Up to 5 companies, budget vs actual</li></ul><a class="btn pri full" href="app">Start free trial</a></div>
+    <div class="card plan rv"><h3>Enterprise</h3><p class="tiny">$100M and up</p><div class="price" data-m="1500">$1,500<span>/month</span></div><ul><li>Unlimited companies and currencies</li><li>Corporate bank files, 500 AI checks</li><li>30-day guided pilot, priority help</li></ul><a class="btn pri full" href="app">Start free trial</a></div>
   </div>
-  <p class="tiny center">Your card is held securely by Stripe and charged when the trial ends. Cancel any time inside the app.</p>
+  <p class="tiny center">Explore the sample company free, no card needed. Your own data unlocks with the 14-day trial: your card is held securely by Stripe and charged when the trial ends. Cancel any time inside the app.</p>
 </div></section>
 
-<section id="faq"><div class="wrap narrow">
-  <div class="eyebrow">Questions</div><h2>Straight answers</h2>
-  <details><summary>Does it work with my bank?</summary><p>Yes. Every bank lets you download transactions (CSV, Excel, QFX/OFX or PDF), and Liquara reads all of them. Larger companies can use the BAI2, MT940 or camt.053 files their bank already sends. Automatic connections through providers like Plaid, MX or Finicity are available as an add-on.</p></details>
-  <details><summary>Where does my data go?</summary><p>Your data is stored and analyzed on your own device. Only when you choose AI reading (for PDFs, photos and unusual files) or the savings finder is the relevant file or bill sent securely to the AI service to be read. Liquara keeps no copy on any server.</p></details>
-  <details><summary>How accurate is it?</summary><p>It tells you. Liquara forecasts your past from older data, compares with what really happened, picks the method that worked best for your business and widens the range by its own past misses. Accuracy depends on how complete your data is.</p></details>
-  <details><summary>Is this financial advice?</summary><p>No. Liquara gives you estimates and analysis to support your decisions. For tax, legal or investment decisions, talk to a qualified professional.</p></details>
-  <details><summary>Is there a phone app?</summary><p>Yes, for Android. On a laptop, iPhone or any browser, use Liquara right here on the web.</p></details>
+<!-- 8. MOBILE -->
+<section id="mobile" class="alt"><div class="wrap grid2">
+  <div><div class="eyebrow rv">Mobile app</div><h2 class="rv">Your cash, <em>in your pocket.</em></h2><p class="lead rv">The same Liquara on your Android phone, as a real app. Same account, same numbers, same three views. Check Friday's balance from the job site, the kitchen or the airport.</p>
+  <div class="row cta rv"><a class="btn pri big" href="https://github.com/quuxin2-a11y/liquara/releases/latest/download/liquara.apk">Download for Android</a><a class="btn ghost big" href="app">Use it in your browser</a></div>
+  <p class="tiny rv" style="margin-top:14px"><b>iPhone:</b> open getliquara.com in Safari, tap <b>Start free</b>, then Share → <b>Add to Home Screen</b>. An App Store version is on the way.</p></div>
+  <div class="rv"><img src="site-mobile.jpg" alt="Liquara on a phone: Owner and CFO views" class="round" loading="lazy"></div>
+</div>
+<div class="wrap"><div class="cards four small-cards">
+  <div class="card rv"><b>Monday morning brief</b><span>A notification every Monday at 8 AM with your cash, the week ahead and anything that needs you.</span></div>
+  <div class="card rv"><b>PIN lock</b><span>Your numbers stay behind a PIN on your phone.</span></div>
+  <div class="card rv"><b>Share in one tap</b><span>Send the lender packet, board pack or Excel export straight from your phone.</span></div>
+  <div class="card rv"><b>12 languages</b><span>English, Español, 中文, Tiếng Việt, 한국어, Tagalog, العربية, Français, Português, हिन्दी, 日本語, Deutsch.</span></div>
+</div>
+<details class="install rv"><summary>How to install on Android</summary><ol><li>Tap <b>Download for Android</b>.</li><li>Open the downloaded <b>liquara.apk</b>.</li><li>If asked, allow installs from your browser, then tap <b>Install</b>.</li><li>Open Liquara and start your 14-day free trial or sign in with your plan.</li></ol><p>Free to download. Download again any time to get the newest version.</p></details></div>
+</section>
+
+<!-- 9. FOUNDER -->
+<section id="founder"><div class="wrap narrow founder">
+  <div>
+    <div class="eyebrow rv">Meet the founder</div>
+    <h2 class="rv">Built by a finance person, <em>for the people who sign the checks.</em></h2>
+    <p class="who rv"><b>Mark Joseph</b> · Founder &amp; CEO<br><span>FP&amp;A and AI Transformation Lead</span></p>
+    <p class="lead rv">Mark works where finance meets AI: financial planning and analysis (FP&amp;A), and leading AI projects that turn messy data into decisions. Liquara is the tool he wanted every business to have: one honest view of where the cash is going, with odds instead of guesses, priced so a corner shop gets the same forward view as a Fortune 500 treasury team.</p>
+    <blockquote class="rv">"Every owner deserves to know Friday's balance on Monday."</blockquote>
+    <a class="btn ghost rv" href="mailto:mark@getliquara.com">Email Mark directly · mark@getliquara.com</a>
+  </div>
 </div></section>
 
-<footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> Liquara · © 2026 Mark Joseph</span><span><a href="privacy.html">Privacy</a> · <a href="privacy.html#terms">Terms</a> · <a href="app.html">Open the app</a></span></div><p class="tiny wrap">Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
+<!-- 10. FAQ -->
+<section id="faq" class="alt"><div class="wrap narrow">
+  <div class="eyebrow rv">Questions</div><h2 class="rv">Straight answers</h2>
+  <details class="rv"><summary>Does it work with my bank?</summary><p>Yes. Every bank lets you download transactions (CSV, Excel, QFX/OFX or PDF), and Liquara reads all of them. Larger companies can use the BAI2, MT940 or camt.053 files their bank already sends. Automatic bank connections are coming soon.</p></details>
+  <details class="rv"><summary>Can I try it before I pay?</summary><p>Yes. Pick your size and explore a full sample company, no card needed. To use your own data, start the 14-day free trial. Your card is charged only when the trial ends, and you can cancel any time in the app.</p></details>
+  <details class="rv"><summary>Where does my data go?</summary><p>Your data is stored and analyzed on your own device. Only when you choose AI reading (for PDFs, photos and unusual files) or the savings finder is the relevant file or bill sent securely to the AI service to be read. Liquara keeps no copy on any server.</p></details>
+  <details class="rv"><summary>How accurate is it?</summary><p>It tells you. Liquara forecasts your past from older data, compares with what really happened, picks the method that worked best for your business and widens the range by its own past misses. Accuracy depends on how complete your data is.</p></details>
+  <details class="rv"><summary>Is this financial advice?</summary><p>No. Liquara gives you estimates and analysis to support your decisions. For tax, legal or investment decisions, talk to a qualified professional.</p></details>
+  <details class="rv"><summary>Is there a phone app?</summary><p>Yes, for Android (see Mobile app above). On a laptop, iPhone or any browser, use Liquara right here on the web.</p></details>
+</div></section>
+
+<!-- 11. CONTACT -->
+<section id="contact"><div class="wrap">
+  <div class="eyebrow rv">Contact</div><h2 class="rv">Talk to a <em>real person.</em></h2><p class="lead rv">Questions, a demo for your team, or help with your account. We answer within one business day.</p>
+  <div class="cards four contact">
+    <a class="card rv" href="mailto:hello@getliquara.com"><b>General questions</b><span>hello@getliquara.com</span></a>
+    <a class="card rv" href="mailto:support@getliquara.com"><b>Help with the app</b><span>support@getliquara.com</span></a>
+    <a class="card rv" href="mailto:billing@getliquara.com"><b>Billing and plans</b><span>billing@getliquara.com</span></a>
+    <a class="card rv" href="mailto:mark@getliquara.com"><b>Mark Joseph, founder</b><span>mark@getliquara.com</span></a>
+  </div>
+</div></section>
+
+<!-- 12. FINAL CTA -->
+<section class="final"><canvas id="flow2" aria-hidden="true"></canvas><div class="wrap center">
+  <h2 class="rv">Know Friday's balance <em>on Monday.</em></h2>
+  <div class="row cta rv" style="justify-content:center"><a class="btn pri big" href="app">Try it free for 14 days</a></div>
+</div></section>
+
+<footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> Liquara · © 2026 Mark Joseph</span><span><a href="mailto:hello@getliquara.com">hello@getliquara.com</a> · <a href="privacy">Privacy</a> · <a href="privacy#terms">Terms</a> · <a href="app">Open the app</a></span></div><p class="tiny wrap">Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
 <script src="site.js"></script>
 </body>
 </html>

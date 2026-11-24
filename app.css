@@ -263,3 +263,5 @@ hr.s { border: 0; border-top: 1px solid var(--line2); margin: 14px 0; }
 [data-theme=light] .chart circle[fill="#0a1836"] { fill: #fff; stroke: #0b1226; }
 [data-theme=light] .seg button.on, [data-theme=light] .chip.on { background: #0b1226; color: #fff; }
 [data-theme=light] .seg { background: #fff; }
+
+.homebtn{background:none;border:0;padding:0;margin:0;display:inline-flex;cursor:pointer;line-height:0}.homebtn:active{transform:scale(.92)}

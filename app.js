@@ -134,7 +134,7 @@
   function syncNav(show) { nav.style.display = show ? "" : "none"; nav.innerHTML = '<div class="in">' + TABS.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (ST.tab === t[0] ? "on" : "") + '" aria-label="' + t[1] + '">' + ic(t[2]) + "<span>" + t[1] + "</span></button>"; }).join("") + "</div>"; }
   function head(sub) {
     var live = S.demo ? '<span class="badge">Demo</span>' : (S.conns && S.conns.length ? '<span class="live"><i></i>Live link</span>' : "");
-    return '<div class="top">' + HEART + '<div style="min-width:0"><div class="nm">Liquara</div><div class="co">' + esc(sub || companyName()) + '</div></div><div class="sp"></div>' + live + '<button class="ib" data-act="theme" aria-label="Light or dark">' + (S.theme === "light" ? "☾" : "☀") + '</button><button class="ib" data-act="menu" aria-label="Menu">' + ic("menu") + "</button></div>";
+    return '<div class="top"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<div style="min-width:0"><div class="nm">Liquara</div><div class="co">' + esc(sub || companyName()) + '</div></div><div class="sp"></div>' + live + '<button class="ib" data-act="theme" aria-label="Light or dark">' + (S.theme === "light" ? "☾" : "☀") + '</button><button class="ib" data-act="menu" aria-label="Menu">' + ic("menu") + "</button></div>";
   }
   function render() {
     ST.charts = {}; var ask = document.querySelector(".askbar"); if (ask) ask.remove();
@@ -219,6 +219,15 @@
   function foot() { return '<div class="foot">LIQUARA · ' + (S.ccy || "USD") + " · " + (S.demo ? "FICTIONAL DEMO DATA" : "COMPUTED ON THIS DEVICE") + " · " + fd(ST.res.analysis.asOf).toUpperCase() + "</div>"; }
 
 
+  /* ---------- clean address: show getliquara.com instead of /app while using the app ---------- */
+  (function () {
+    try {
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+      if (!/\/app(\.html)?$/.test(location.pathname)) return;
+      sessionStorage.setItem("lq_inapp", "1");
+      history.replaceState(history.state, "", location.pathname.replace(/app(\.html)?$/, "") + location.search + location.hash);
+    } catch (e) { }
+  })();
   /* ---------- languages ---------- */
   var I18N = window.LQ_I18N || { langs: [["en", "English", "en-US"]], dict: {} };
   function lang() { if (!S.lang) { var nl = (navigator.language || "en").slice(0, 2).toLowerCase(); if (nl === "fi") nl = "tl"; S.lang = I18N.langs.some(function (l) { return l[0] === nl; }) ? nl : "en"; } return S.lang; }
@@ -589,8 +598,8 @@
   var picker = document.createElement("input"); picker.type = "file"; picker.multiple = true; picker.style.display = "none"; document.body.appendChild(picker);
   picker.addEventListener("change", async function () {
     var fl = Array.prototype.slice.call(picker.files || []); picker.value = ""; if (!fl.length) return;
+    if (gate("Your own files unlock with your free trial.")) return;
     if (S.demo) { delete S.demo; delete S.budget; S.ccy = null; saveS(); }
-    if (!S.trial) { S.trial = Date.now(); saveS(); }
     closeSheet(); syncNav(false);
     var done = 0, notes = [];
     function prog(msg) { app.innerHTML = '<div class="ob"><div class="obtop">' + HEART + '<b>Liquara</b></div><h2>Reading your files</h2><div class="cord"></div><p class="mute">' + done + " of " + fl.length + " done. " + esc(msg || "") + '</p><p class="small mute">Big uploads can take a few minutes. Liquara files every item in the right place on its own.</p>' + notes.map(function (n) { return '<div class="small">' + n + "</div>"; }).join("") + "</div>"; }
@@ -632,7 +641,8 @@
   function applyTheme() { document.documentElement.setAttribute("data-theme", S.theme === "light" ? "light" : "dark"); var mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = S.theme === "light" ? "#f3f6fb" : "#070b16"; }
   function trialLeft() { if (!S.trial) return null; return Math.max(0, TRIAL_DAYS - Math.floor((Date.now() - S.trial) / 864e5)); }
   function paid() { return S.license && S.license.until > Date.now(); }
-  function locked() { return !S.demo && !paid() && S.trial && trialLeft() === 0; }
+  function gate(why) { if (paid()) return false; ST.gateMsg = why || "Your own data unlocks with your free trial."; closeSheet(); ST.tab = "plans"; render(); try { window.scrollTo(0, 0); } catch (e) { } return true; }
+  function locked() { return !S.demo && !paid() && ((ST.sources && ST.sources.length) || (S.conns && S.conns.length)); }
 
   /* ---------- currencies ---------- */
   var FX_BUILTIN = { date: "2026-11-23", rates: { USD: 1, EUR: 0.91416, GBP: 0.76491, CAD: 1.4362, MXN: 19.2458, JPY: 159.07, CNY: 6.6647, INR: 92.92, AUD: 1.5113, CHF: 0.83975, BRL: 5.9979, KRW: 1348.85, PHP: 63.855, SGD: 1.2912, HKD: 7.8409, SEK: 10.2729, NOK: 9.8076, DKK: 6.833, PLN: 4.0761, ZAR: 17.5074, NZD: 1.8355, TRY: 50.59, THB: 34.045, IDR: 18222, MYR: 4.123, ILS: 3.3498, CZK: 22.356, HUF: 340.32, RON: 4.8892, ISK: 125.42 } };
@@ -663,7 +673,7 @@
   var HEART = '<svg viewBox="88 96 336 336" class="mk"><path d="M256 420 C 150 352, 92 292, 92 214 C 92 150, 138 104, 196 104 C 226 104, 246 118, 256 138 C 266 118, 286 104, 316 104 C 374 104, 420 150, 420 214 C 420 292, 362 352, 256 420 Z" fill="#c8ff4d"/><circle cx="318" cy="200" r="30" fill="#0b1226"/></svg>';
   function viewOnboard() {
     var step = ST.ob || (S.size ? (S.industry ? "start" : "industry") : "size");
-    var top = '<div class="obtop">' + HEART + '<b>Liquara</b><span style="margin-inline-start:auto;max-width:150px">' + langSelect("oblang") + "</span></div>";
+    var top = '<div class="obtop"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<b>Liquara</b><span style="margin-inline-start:auto;max-width:150px">' + langSelect("oblang") + "</span></div>";
     if (step === "size") return top + '<div class="ob"><div class="eyebrow">Step 1 of 2</div><h1>How big is your business?</h1><p class="mute">Yearly revenue. We\'ll show you Liquara running a company your size.</p><div class="obgrid">' + SIZES.map(function (x) { return '<button class="opt" data-size="' + x[0] + '"><div class="ic">' + ic("data") + '</div><div><b>' + x[1] + '</b><span>' + ({ s1: "Owner-run shops and studios", s2: "Growing small businesses", s3: "Mid-size companies with a finance team", s4: "Large companies, several entities", s5: "Enterprises and groups" })[x[0]] + "</span></div></button>"; }).join("") + "</div></div>";
     if (step === "industry") return top + '<div class="ob"><div class="eyebrow">Step 2 of 2</div><h1>What kind of business?</h1><p class="mute">Used to compare you with businesses like yours.</p><div class="chips" style="flex-wrap:wrap">' + INDUSTRIES.map(function (x) { return '<button class="chip" data-ind="' + x[0] + '">' + x[1] + "</button>"; }).join("") + '</div><button class="btn ghost" style="margin-top:18px" data-ob="size">Back</button></div>';
     return top + '<div class="ob"><h1>Ready when you are</h1><button class="btn pri full" data-act="tour">Watch how it works (60 sec)</button><button class="btn ghost full" style="margin-top:10px" data-act="sample">Skip to the sample company</button></div>';
@@ -684,7 +694,7 @@
       ["It grades itself first", "It forecast this company's past from older data " + (B ? B.origins : 0) + " times and checked the answers.", '<div class="bigstat">' + (B ? pc(B.accuracy) : "–") + '<span>accurate on its own history</span></div>'],
       ["One app, three views", "Owners get plain answers. CFOs get flows and variance. Boards get a forward-looking brief.", '<div class="lenses"><span>Owner</span><span>CFO</span><span>Board</span></div>'],
       ["Money it finds for you", "Ranked moves worth " + m(A.opportunities.slice(0, 3).reduce(function (s, o) { return s + o.value; }, 0)) + ", odd payments flagged, and cheaper options for your bills.", '<div class="maps">' + A.opportunities.slice(0, 3).map(function (o, i) { return '<div style="animation-delay:' + i * 0.3 + 's">' + esc(o.title) + " · <b>" + m(o.value) + "</b></div>"; }).join("") + "</div>"],
-      ["Your turn", "Explore the sample, then connect your own data to start a free " + TRIAL_DAYS + "-day trial.", '<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap"><button class="btn pri" data-act="sample">Explore the sample</button><button class="btn" data-act="pick">Connect my data</button></div>']
+      ["Your turn", "Explore the sample. When you're ready, start your free " + TRIAL_DAYS + "-day trial.", '<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap"><button class="btn pri" data-act="sample">Explore the sample</button><button class="btn" data-act="pick">Connect my data</button></div>']
     ];
     TOUR = { i: 0, scenes: scenes, paused: false, t: null }; showScene();
   }
@@ -698,7 +708,7 @@
   /* ---------- Pulse: one screen, three lenses ---------- */
   function lensBar() { var L = S.lens || "Owner"; return '<div class="seg lens">' + ["Owner", "CFO", "Board"].map(function (x) { return '<button data-lens="' + x + '" class="' + (x === L ? "on" : "") + '">' + x + "</button>"; }).join("") + "</div>"; }
   function banner() {
-    if (S.demo) return '<div class="banner"><span><b>Sample company.</b> Everything here is fictional.</span><button class="btn pri sm" data-act="pick">Connect my data</button></div>';
+    if (S.demo) return '<div class="banner"><span><b>Sample company.</b> Everything here is fictional.</span><button class="btn pri sm" data-act="pick">' + (paid() ? "Connect my data" : "Start free trial") + '</button></div>';
     var t = trialLeft(); if (paid() || t == null) return "";
     return '<div class="banner"><span><b>' + t + " day" + (t === 1 ? "" : "s") + " left</b> in your free trial.</span><button class=\"btn pri sm\" data-go=\"plans\">Choose a plan</button></div>";
   }
@@ -860,8 +870,9 @@
 
   /* ---------- plans, trial and in-app checkout ---------- */
   function viewPlans() {
-    var per = ST.per || "month", rec = planFor(), t = trialLeft();
-    var h = head() + '<div class="panel gold"><div class="eyebrow">Plans</div><h2>' + (paid() ? "You're subscribed" : t != null ? (t ? t + " days left in your trial" : "Your free trial has ended") : "Start your " + TRIAL_DAYS + "-day free trial") + '</h2><p class="small mute" style="margin:6px 0 0">' + (paid() ? "Plan: " + esc(S.license.plan) + ". Manage your card or cancel below." : "Your card is saved securely by Stripe and charged when the trial ends. Cancel any time in the app.") + '</p></div><div class="seg" style="margin-bottom:12px">' + Object.keys(PERIODS).map(function (k) { return '<button data-per="' + k + '" class="' + (per === k ? "on" : "") + '">' + PERIODS[k][0] + (PERIODS[k][2] < 1 ? " · save " + Math.round((1 - PERIODS[k][2]) * 100) + "%" : "") + "</button>"; }).join("") + '</div><div class="plans">';
+    var per = ST.per || "month", rec = planFor(), t = null;
+    var gm = !paid() && ST.gateMsg ? '<div class="panel" style="border-color:rgba(200,255,77,.5)"><b>' + esc(ST.gateMsg) + '</b><p class="small mute" style="margin:6px 0 0">Until then you can explore the sample company as much as you like.</p><button class="btn ghost sm" data-act="backdemo" style="margin-top:10px">Back to the sample</button></div>' : "";
+    var h = head() + gm + '<div class="panel gold"><div class="eyebrow">Plans</div><h2>' + (paid() ? "You're subscribed" : t != null ? (t ? t + " days left in your trial" : "Your free trial has ended") : "Start your " + TRIAL_DAYS + "-day free trial") + '</h2><p class="small mute" style="margin:6px 0 0">' + (paid() ? "Plan: " + esc(S.license.plan) + ". Manage your card or cancel below." : "Your card is saved securely by Stripe and charged when the trial ends. Cancel any time in the app.") + '</p></div><div class="seg" style="margin-bottom:12px">' + Object.keys(PERIODS).map(function (k) { return '<button data-per="' + k + '" class="' + (per === k ? "on" : "") + '">' + PERIODS[k][0] + (PERIODS[k][2] < 1 ? " · save " + Math.round((1 - PERIODS[k][2]) * 100) + "%" : "") + "</button>"; }).join("") + '</div><div class="plans">';
     h += Object.keys(PLANS).map(function (k) { var p = PLANS[k], price = priceOf(k, per); return '<div class="panel plan ' + (k === rec ? "rec" : "") + '">' + (k === rec ? '<span class="badge g">Fits your size</span>' : "") + "<h3>" + p.name + '</h3><div class="small mute">' + p.who + '</div><div class="price">' + m(price).replace(/\.0K/, "K") + '<span>/' + ({ month: "month", quarter: "quarter", year: "year" })[per] + '</span></div><ul class="small"><li>All three views, forecasting and alerts</li><li>' + p.checks + " AI savings checks a month</li><li>" + (k === "owner" ? "1 company" : k === "business" ? "Up to 5 companies, budget vs actual" : "Unlimited companies, currencies, bank files, priority help") + '</li></ul><button class="btn ' + (k === rec ? "pri" : "") + ' full" data-buy="' + k + '">' + (paid() ? "Switch" : "Start free trial") + "</button></div>"; }).join("");
     h += '</div><div id="checkout"></div>' + (paid() ? '<button class="btn ghost" data-act="portal">Update card or cancel</button>' : "") + '<div class="panel"><div class="eyebrow">Have a license code?</div><div class="row" style="gap:8px"><input class="in" id="lic" placeholder="LQ1…"><button class="btn" data-act="lic">Unlock</button></div></div>';
     return h + foot();
@@ -959,7 +970,7 @@
     if (d.ob) { ST.ob = d.ob; render(); return; }
     if (d.lens) { S.lens = d.lens; saveS(); render(); return; }
     if (d.track) { trackOpp(+d.track); return; }
-    if (d.save) { findSavings(+d.save); return; }
+    if (d.save) { if (gate("AI savings checks are part of your free trial. Start it to check real prices.")) return; findSavings(+d.save); return; }
     if (d.cdel) { S.costs = (S.costs || []).filter(function (c) { return c.id !== d.cdel; }); saveS(); await analyze(); render(); return; }
     if (d.per) { ST.per = d.per; render(); return; }
     if (d.buy) { buy(d.buy); return; }
@@ -968,6 +979,8 @@
     if (d.scn) { ST.sc = Object.assign(defSc(), S.scenarios[+d.scn].sc); go("decide"); return; }
     if (d.scndel) { S.scenarios.splice(+d.scndel, 1); saveS(); render(); return; }
     var A_ = d.act;
+    if (A_ === "home") { var nat = false; try { nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (er) { } if (nat) { ST.tab = "pulse"; render(); window.scrollTo(0, 0); } else { try { sessionStorage.removeItem("lq_inapp"); } catch (er) { } location.href = "./"; } return; }
+    if (A_ === "backdemo") { ST.gateMsg = null; ST.tab = "pulse"; render(); window.scrollTo(0, 0); return; }
     if (A_ === "theme") { S.theme = S.theme === "light" ? "dark" : "light"; saveS(); render(); return; }
     if (A_ === "tour") { startTour(); return; }
     if (A_ === "sample") { if (TOUR) clearTimeout(TOUR.t); TOUR = null; var sz = SIZES.filter(function (x) { return x[0] === S.size; })[0] || SIZES[0]; S.demo = S.demo || sz[2]; saveS(); await analyze(); ST.tab = "home"; render(); return; }
@@ -983,8 +996,8 @@
     if (A_ === "xlsx") { exportXlsx().catch(function (er) { toast("Couldn't export: " + er.message); }); return; }
     if (A_ === "savegoal") { S.goal = { type: document.getElementById("gt").value, value: +document.getElementById("gv").value.replace(/[^\d.]/g, "") }; saveS(); render(); return; }
     if (A_ === "cleargoal") { delete S.goal; saveS(); render(); return; }
-    if (A_ === "budgetimport") { budgetPicker.click(); return; }
-    if (A_ === "addcost") { var rows = parseTyped(document.getElementById("costin").value), fc = document.getElementById("costfc").checked; if (!rows.length) { toast("Add an amount, like: Uniforms 600 a month"); return; } S.costs = (S.costs || []).concat(rows.map(function (r) { return { id: uid(), vendor: r.vendor, amount: r.amount, every: r.every, forecast: fc }; })); if (!S.demo && !S.trial) S.trial = Date.now(); saveS(); await analyze(); render(); toast("Added " + rows.length + " cost" + (rows.length > 1 ? "s" : "")); return; }
+    if (A_ === "budgetimport") { if (gate("Import your own budget once your free trial starts.")) return; budgetPicker.click(); return; }
+    if (A_ === "addcost") { if (gate("Add your own costs once your free trial starts.")) return; var rows = parseTyped(document.getElementById("costin").value), fc = document.getElementById("costfc").checked; if (!rows.length) { toast("Add an amount, like: Uniforms 600 a month"); return; } S.costs = (S.costs || []).concat(rows.map(function (r) { return { id: uid(), vendor: r.vendor, amount: r.amount, every: r.every, forecast: fc }; })); if (!S.demo && !S.trial) S.trial = Date.now(); saveS(); await analyze(); render(); toast("Added " + rows.length + " cost" + (rows.length > 1 ? "s" : "")); return; }
     if (A_ === "portal") { try { var pr = await helper("/portal", { device: S.device }); var w = window.open(pr.url, "_blank"); if (!w) location.href = pr.url; } catch (er) { toast(er.message); } return; }
     if (A_ === "lic") { try { await setLicense(document.getElementById("lic").value); toast("Unlocked"); render(); } catch (er) { toast(er.message); } return; }
     if (A_ === "unlock") { var pv = document.getElementById("pinin").value; if (await sha(S.pin.salt + pv) === S.pin.hash) { unlocked = true; render(); } else { toast("Wrong PIN"); buzz(); } return; }
@@ -1002,7 +1015,7 @@
     else if (d.hz) { ST.hz = d.hz; render(); }
     else if (d.q) ask(d.q);
     else if (d.menu) { closeSheet(); if (d.menu === "pdf" || d.menu === "lender") boardPack(d.menu).catch(function (er) { toast("Couldn't build the PDF: " + er.message); }); else if (d.menu === "xlsx") exportXlsx().catch(function (er) { toast("Couldn't export: " + er.message); }); else if (d.menu === "tour") startTour(); else go(d.menu); }
-    else if (d.preset) apiSheet(d.preset);
+    else if (d.preset) { if (gate("Live connections unlock with your free trial.")) return; apiSheet(d.preset); }
     else if (d.del) { await delSrc(d.del); ST.sources = await allSrc(); await analyze(); render(); }
     else if (d.delc) { S.conns = (S.conns || []).filter(function (c) { return c.id !== d.delc; }); saveS(); await delSrc("api-" + d.delc); ST.sources = await allSrc(); await analyze(); render(); }
     else if (d.pre) {
@@ -1011,13 +1024,14 @@
       render();
     }
     else if (d.act === "menu") menu();
-    else if (d.act === "pick") picker.click();
-    else if (d.act === "api") apiSheet("custom");
+    else if (d.act === "pick") { if (gate("Upload your own bank files and statements once your free trial starts.")) return; picker.click(); }
+    else if (d.act === "api") { if (gate("Live connections unlock with your free trial.")) return; apiSheet("custom"); }
     else if (d.act === "sync") syncAll(false);
     else if (d.act === "demo") { delete S.budget; S.ccy = null; S.demo = d.id; delete S.company; saveS(); ST.qa = []; ST.sc = defSc(); scanAndShow("Demo: " + DEMO.get(d.id).name); }
     else if (d.act === "saveset") { S.company = document.getElementById("sco").value.trim() || undefined; var bv = document.getElementById("sbal").value.replace(/[$,\s]/g, ""); S.balance = bv === "" ? undefined : +bv; S.industry = document.getElementById("sind").value; S.size = document.getElementById("ssz").value; S.ccy = document.getElementById("sccy").value; var hw = document.getElementById("shelper"); if (hw) S.helperUrl = hw.value.trim(); if (S.helperUrl) CFG.worker = S.helperUrl; saveS(); await analyze(); toast("Saved"); go("home"); }
     else if (d.act === "wipe") { if (!confirmTwice(t)) return; await clearSrc(); S = {}; saveS(); ST.sources = []; ST.qa = []; ST.res = null; ST.model = null; render(); }
     else if (d.act === "savec") {
+      if (gate("Live connections unlock with your free trial.")) return;
       var c = { id: uid(), name: document.getElementById("cn").value.trim() || "Live system", url: document.getElementById("cu").value.trim(), key: document.getElementById("ck").value.trim(), hdrName: document.getElementById("chn").value, hdrPrefix: document.getElementById("chp").value, scale: +document.getElementById("cs").value, kind: document.getElementById("ckind").value };
       if (!/^https:\/\/[^\s]+\.[^\s]+/i.test(c.url)) { toast("Enter a full https:// address"); return; }
       t.disabled = true; t.textContent = "Connecting…";
