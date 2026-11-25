@@ -73,7 +73,7 @@ export default {
       if (path === "/checkout") {
         const prices = JSON.parse(env.PRICES || "{}"), price = prices[body.plan + "_" + body.period];
         if (!price) return J({ error: "That plan isn't set up yet" }, 400, origin);
-        const s = await stripe(env, "checkout/sessions", { ui_mode: "embedded", mode: "subscription", redirect_on_completion: "never", "line_items[0][price]": price, "line_items[0][quantity]": 1, subscription_data: { trial_period_days: body.trialDays || 14, metadata: { plan: body.plan, device: body.device || "" } }, customer_email: body.email || undefined, payment_method_collection: "always", metadata: { plan: body.plan, period: body.period } });
+        const s = await stripe(env, "checkout/sessions", { ui_mode: "embedded_page", mode: "subscription", redirect_on_completion: "never", "line_items[0][price]": price, "line_items[0][quantity]": 1, subscription_data: { trial_period_days: body.trialDays || 14, metadata: { plan: body.plan, device: body.device || "" } }, customer_email: body.email || undefined, payment_method_collection: "always", metadata: { plan: body.plan, period: body.period } });
         return J({ clientSecret: s.client_secret, session: s.id }, 200, origin);
       }
       if (path === "/license") {
