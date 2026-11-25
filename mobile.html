@@ -11,14 +11,14 @@
 <meta property="og:title" content="Liquara · Cash intelligence">
 <meta property="og:description" content="Know where your cash is going, with odds. From corner shops to $1B groups.">
 <meta property="og:image" content="site-desktop.jpg">
-<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload")location.replace("app");else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
+<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload"){sessionStorage.setItem("lq_reload","1");location.replace("app")}else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="site.css">
 <script src="analytics.js" defer></script>
 </head>
 <body class="home mobilepage">
-<header class="nav"><div class="wrap row"><a class="brand" href="./" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30">Liquara</a><nav><a href="./#how">How it works</a><a href="./#views">Views</a><a href="./#savings">Savings</a><a href="./#pricing">Pricing</a><a href="./#founder">About</a><a href="./#contact">Contact</a><a href="account">My account</a></nav><div class="hbtns"><a class="btn pri appbtn" href="mobile"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 14h4v-1h-4z"/></svg><span class="l">Mobile app</span><span class="s">App</span></a><a class="btn pri" href="app">Start free</a></div></div></header>
+<header class="nav"><div class="wrap row"><a class="brand" href="./" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30">Liquara</a><nav><a href="./#how">How it works</a><a href="./#views">Views</a><a href="./#savings">Savings</a><a href="./#pricing">Pricing</a><a href="./#founder">About</a><a href="./#contact">Contact</a><a href="account">My account</a></nav><div class="hbtns"><a class="btn pri appbtn" href="mobile"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 14h4v-1h-4z"/></svg><span class="l">Mobile app</span><span class="s">App</span></a><a class="btn pri demobtn" href="app#demo">Demo</a></div></div></header>
 <nav class="mnav"><a href="./#how">How it works</a><a href="./#views">Views</a><a href="./#savings">Savings</a><a href="./#pricing">Pricing</a><a href="./#founder">About</a><a href="./#faq">FAQ</a><a href="account">My account</a><a href="./#contact">Contact</a></nav>
 
 <section class="hero mhero" id="top">
@@ -81,7 +81,7 @@
   </div>
   <div class="rv mside">
     <div class="card"><h3>On a computer</h3><p class="tiny">Open <a href="app">getliquara.com/app</a> in Chrome or Edge and choose <strong>Install</strong> (in the address bar, or the <strong>Install on your computer</strong> button in Settings). Liquara gets its own icon and window.</p></div>
-    <div class="card"><h3>On iPhone</h3><p class="tiny">Open getliquara.com in Safari, tap <strong>Start free</strong>, then Share → <strong>Add to Home Screen</strong>. An App Store version is planned.</p></div>
+    <div class="card"><h3>On iPhone</h3><p class="tiny">Open getliquara.com in Safari, tap <strong>Demo</strong>, then Share → <strong>Add to Home Screen</strong>. An App Store version is planned.</p></div>
     <div class="card"><h3>Managing your plan</h3><p class="tiny">Change your card, switch plans, see invoices or cancel any time in <a href="account">My account</a>.</p></div>
   </div>
 </div></section>
@@ -100,7 +100,7 @@
   <div class="row cta rv" style="justify-content:center"><a class="btn pri big" href="https://github.com/quuxin2-a11y/liquara/releases/latest/download/liquara.apk">Download for Android</a><a class="btn ghost big" href="app">Try it in your browser</a></div>
 </div></section>
 
-<footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> Liquara · © 2026 Mark Joseph</span><span><a href="mailto:hello@getliquara.com">hello@getliquara.com</a> · <a href="account">My account</a> · <a href="mobile">Mobile app</a> · <a href="privacy">Privacy</a> · <a href="privacy#terms">Terms</a> · <a href="app">Open the app</a></span></div><p class="tiny wrap">Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
+<footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> Liquara · © 2026 Mark Joseph</span><span><a href="mailto:hello@getliquara.com">hello@getliquara.com</a> · <a href="account">My account</a> · <a href="mobile">Mobile app</a> · <a href="privacy">Privacy</a> · <a href="terms">Terms</a> · <a href="app">Open the app</a></span></div><p class="tiny wrap">Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
 <script src="site.js"></script>
 </body>
 </html>

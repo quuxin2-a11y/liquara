@@ -11,14 +11,14 @@
 <meta property="og:title" content="Liquara · Cash intelligence">
 <meta property="og:description" content="Know where your cash is going, with odds. From corner shops to $1B groups.">
 <meta property="og:image" content="site-desktop.jpg">
-<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload")location.replace("app");else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
+<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload"){sessionStorage.setItem("lq_reload","1");location.replace("app")}else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="site.css">
 <script src="analytics.js" defer></script>
 </head>
 <body class="home">
-<header class="nav"><div class="wrap row"><a class="brand" href="#top" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30">Liquara</a><nav><a href="#how">How it works</a><a href="#views">Views</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#founder">About</a><a href="#contact">Contact</a><a href="account">My account</a></nav><div class="hbtns"><a class="btn pri appbtn" href="mobile"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 14h4v-1h-4z"/></svg><span class="l">Mobile app</span><span class="s">App</span></a><a class="btn pri" href="app">Start free</a></div></div></header>
+<header class="nav"><div class="wrap row"><a class="brand" href="#top" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30">Liquara</a><nav><a href="#how">How it works</a><a href="#views">Views</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#founder">About</a><a href="#contact">Contact</a><a href="account">My account</a></nav><div class="hbtns"><a class="btn pri appbtn" href="mobile"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 14h4v-1h-4z"/></svg><span class="l">Mobile app</span><span class="s">App</span></a><a class="btn pri demobtn" href="app#demo">Demo</a></div></div></header>
 <nav class="mnav"><a href="#how">How it works</a><a href="#views">Views</a><a href="#savings">Savings</a><a href="#pricing">Pricing</a><a href="#founder">About</a><a href="#faq">FAQ</a><a href="account">My account</a><a href="#contact">Contact</a></nav>
 
 <!-- 1. HERO -->
@@ -28,8 +28,8 @@
     <div class="eyebrow rv">Cash intelligence connected to the heart of your business</div>
     <h1 class="rv">Know where your cash is going. <em>With odds.</em></h1>
     <p class="lead rv">Liquara reads whatever data you have, from any bank, in any format. It forecasts your cash 13 weeks and 12 months ahead, grades itself on your own history, finds savings, and answers what owners, CFOs and boards actually ask.</p>
-    <div class="row cta rv"><a class="btn pri big" href="app">Try it free for 14 days</a><a class="btn ghost big" href="app">Watch the 60-second walkthrough</a></div>
-    <p class="tiny rv">No setup call. Explore a sample company your size, then start your free trial to connect your own data.</p>
+    <div class="row cta rv"><a class="btn pri big" href="app#plans">Try it free for 14 days</a><a class="btn ghost big" href="app#demo">See the demo</a></div>
+    <p class="tiny rv">No setup call. Try the demo with a sample company your size, or start your free trial and use your own numbers today.</p>
   </div>
   <a class="scroll" href="#story" aria-label="Scroll down"><span></span></a>
 </section>
@@ -81,9 +81,9 @@
   <div class="eyebrow rv">Pricing</div><h2 class="rv">14 days free. <em>Then a fair price for your size.</em></h2>
   <div class="seg rv" role="tablist"><button data-p="1" class="on">Monthly</button><button data-p="0.9">Quarterly · save 10%</button><button data-p="0.8">Yearly · save 20%</button></div>
   <div class="cards three">
-    <div class="card plan rv"><h3>Owner</h3><p class="tiny">Under $10M revenue</p><div class="price" data-m="39">$39<span>/month</span></div><ul><li>All three views, forecasts and alerts</li><li>20 AI savings checks a month</li><li>1 company</li></ul><a class="btn pri full" href="app">Start free trial</a></div>
-    <div class="card plan rec rv"><span class="badge">Most popular</span><h3>Business</h3><p class="tiny">$10M – $100M</p><div class="price" data-m="249">$249<span>/month</span></div><ul><li>Everything in Owner</li><li>100 AI savings checks a month</li><li>Up to 5 companies, budget vs actual</li></ul><a class="btn pri full" href="app">Start free trial</a></div>
-    <div class="card plan rv"><h3>Enterprise</h3><p class="tiny">$100M and up</p><div class="price" data-m="1500">$1,500<span>/month</span></div><ul><li>Unlimited companies and currencies</li><li>Corporate bank files, 500 AI checks</li><li>30-day guided pilot, priority help</li></ul><a class="btn pri full" href="app">Start free trial</a></div>
+    <div class="card plan rv"><h3>Owner</h3><p class="tiny">Under $10M revenue</p><div class="price" data-m="39">$39<span>/month</span></div><ul><li>All three views, forecasts and alerts</li><li>20 AI savings checks a month</li><li>1 company</li></ul><a class="btn pri full" href="app#plans">Start free trial</a></div>
+    <div class="card plan rec rv"><span class="badge">Most popular</span><h3>Business</h3><p class="tiny">$10M – $100M</p><div class="price" data-m="249">$249<span>/month</span></div><ul><li>Everything in Owner</li><li>100 AI savings checks a month</li><li>Up to 5 companies, budget vs actual</li></ul><a class="btn pri full" href="app#plans">Start free trial</a></div>
+    <div class="card plan rv"><h3>Enterprise</h3><p class="tiny">$100M and up</p><div class="price" data-m="1500">$1,500<span>/month</span></div><ul><li>Unlimited companies and currencies</li><li>Corporate bank files, 500 AI checks</li><li>30-day guided pilot, priority help</li></ul><a class="btn pri full" href="app#plans">Start free trial</a></div>
   </div>
   <p class="tiny center">Explore the sample company free, no card needed. Your own data unlocks with the 14-day trial: your card is held securely by Stripe and charged when the trial ends. Cancel any time inside the app.</p>
 </div></section>
@@ -92,7 +92,7 @@
 <section id="mobile" class="alt"><div class="wrap grid2">
   <div><div class="eyebrow rv">Mobile app</div><h2 class="rv">Your cash, <em>in your pocket.</em></h2><p class="lead rv">The same Liquara on your Android phone, as a real app. Same license, same numbers, same three views. Check Friday's balance from the job site, the kitchen or the airport.</p>
   <div class="row cta rv"><a class="btn pri big" href="https://github.com/quuxin2-a11y/liquara/releases/latest/download/liquara.apk">Download for Android</a><a class="btn ghost big" href="mobile">See everything the app does →</a></div>
-  <p class="tiny rv" style="margin-top:14px"><b>iPhone:</b> open getliquara.com in Safari, tap <b>Start free</b>, then Share → <b>Add to Home Screen</b>. An App Store version is on the way.</p></div>
+  <p class="tiny rv" style="margin-top:14px"><b>iPhone:</b> open getliquara.com in Safari, tap <b>Demo</b>, then Share → <b>Add to Home Screen</b>. An App Store version is on the way.</p></div>
   <div class="rv phones2"><img src="ph-owner.webp" alt="Liquara app: Owner view" loading="lazy"><img src="ph-cfo.webp" alt="Liquara app: CFO view" loading="lazy"></div>
 </div>
 <div class="wrap"><div class="cards four small-cards">
@@ -141,10 +141,10 @@
 <!-- 12. FINAL CTA -->
 <section class="final"><canvas id="flow2" aria-hidden="true"></canvas><div class="wrap center">
   <h2 class="rv">Know Friday's balance <em>on Monday.</em></h2>
-  <div class="row cta rv" style="justify-content:center"><a class="btn pri big" href="app">Try it free for 14 days</a></div>
+  <div class="row cta rv" style="justify-content:center"><a class="btn pri big" href="app#plans">Try it free for 14 days</a></div>
 </div></section>
 
-<footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> Liquara · © 2026 Mark Joseph</span><span><a href="mailto:hello@getliquara.com">hello@getliquara.com</a> · <a href="account">My account</a> · <a href="mobile">Mobile app</a> · <a href="privacy">Privacy</a> · <a href="privacy#terms">Terms</a> · <a href="app">Open the app</a></span></div><p class="tiny wrap">Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
+<footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> Liquara · © 2026 Mark Joseph</span><span><a href="mailto:hello@getliquara.com">hello@getliquara.com</a> · <a href="account">My account</a> · <a href="mobile">Mobile app</a> · <a href="privacy">Privacy</a> · <a href="terms">Terms</a> · <a href="app">Open the app</a></span></div><p class="tiny wrap">Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
 <script src="site.js"></script>
 </body>
 </html>

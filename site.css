@@ -260,3 +260,6 @@ body:not(.home) section{padding:70px 0}
 .abar-t{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
 .acctpage .acct{padding-top:28px}
 .afoot{text-align:center;color:var(--mute);font-size:13.5px;padding:10px 24px 40px}.afoot a{color:var(--mute)}.afoot a:hover{color:var(--lime)}
+/* legal + 404 pages */
+.doc{padding-top:60px;padding-bottom:80px}.doc h1{font-size:clamp(36px,6vw,56px);margin:8px 0 6px}.doc h2{font-size:22px;margin:30px 0 8px;font-family:var(--sans);font-weight:700}.doc p{color:#c3cbe0;line-height:1.7}
+.nf{padding-top:90px;padding-bottom:120px;text-align:left}.nf h1{font-size:clamp(40px,7vw,72px);margin:10px 0}

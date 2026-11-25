@@ -49,7 +49,7 @@
       (tab === "key" ? '<label class="af"><span>License key</span><input id="lk" autocapitalize="characters" autocomplete="off" placeholder="LQ-XXXX-XXXX-XXXX"></label><p class="amsg" id="m">' + esc(msg) + '</p><button class="btn pri big full" data-a="keylogin">Sign in</button><p class="tiny center">Your key is in your Liquara welcome email. Lost it? <a href="mailto:support@getliquara.com">Email support</a>.</p>'
         : tab === "pw" ? '<label class="af"><span>Password</span><input id="pw" type="password" autocomplete="current-password"></label><p class="amsg" id="m">' + esc(msg) + '</p><button class="btn pri big full" data-a="login">Sign in</button><p class="tiny center"><a href="#" data-a="tab" data-t="forgot">Forgot password?</a> · No password yet? Sign in with your license key, then add one.</p>'
         : '<p class="amsg" id="m">' + esc(msg || "We'll email you a link to set a new password.") + '</p><button class="btn pri big full" data-a="forgot">Email me a link</button><p class="tiny center"><a href="#" data-a="tab" data-t="pw">Back to sign in</a></p>') +
-      '</div><div class="acard alt"><b>Not a customer yet?</b><p class="tiny">Try Liquara free for 14 days.</p><a class="btn ghost" href="app">Start free</a></div>');
+      '</div><div class="acard alt"><b>Not a customer yet?</b><p class="tiny">Try Liquara free for 14 days.</p><a class="btn ghost" href="app#plans">See plans</a></div>');
   }
   function signedIn() {
     var L = me.licenses || [];
@@ -71,7 +71,18 @@
     h += '<p class="tiny center">Billing questions? <a href="mailto:billing@getliquara.com">billing@getliquara.com</a> · Help with the app? <a href="mailto:support@getliquara.com">support@getliquara.com</a></p>';
     show(h);
   }
+  /* seamless sign-in: from the app's "My account" link, or because this browser is already signed in to Liquara */
+  async function autoSignIn() {
+    var h = location.hash, m = /[#&]k=([^&]+)/.exec(h), em = /[#&]e=([^&]+)/.exec(h), key = m ? decodeURIComponent(m[1]) : "", email = em ? decodeURIComponent(em[1]) : "";
+    var f = /#forgot(?:=([^&]*))?/.exec(h); if (f) { tab = "forgot"; try { if (f[1]) sessionStorage.setItem("lq_em", decodeURIComponent(f[1])); } catch (e) { } history.replaceState(null, "", location.pathname); return false; }
+    if (m) history.replaceState(null, "", location.pathname);
+    var noAuto = false; try { noAuto = sessionStorage.getItem("lq_noauto") === "1"; } catch (e) { }
+    if (!key && !noAuto) { try { var s = JSON.parse(localStorage.getItem("ao.s") || "{}"); if (s.license && s.license.until > Date.now() && s.license.key) { key = s.license.key; email = email || s.license.email || ""; } } catch (e) { } }
+    if (!key || !email) { if (email) try { sessionStorage.setItem("lq_em", email); } catch (e) { } return false; }
+    try { var r = await api("/account/keylogin", { email: email, key: key }); setTok(r.token); return true; } catch (e) { if (m) setTok(""); return false; }
+  }
   async function load() {
+    if (!tok() || /[#&]k=/.test(location.hash)) await autoSignIn();
     if (!tok()) return signedOut();
     try { me = await api("/account/me"); signedIn(); }
     catch (e) { if (e.code === "signin") { setTok(""); msg = ""; signedOut(); } else show('<div class="acard"><b>Couldn\'t load your account.</b><p class="tiny">' + esc(e.message) + '</p><button class="btn" data-a="reload">Try again</button></div>'); }
@@ -83,14 +94,14 @@
     try {
       if (a === "tab") { var em = v("em"); if (em) try { sessionStorage.setItem("lq_em", em); } catch (e) { } tab = t.dataset.t; msg = ""; signedOut(); return; }
       if (a === "reload") return load();
-      if (a === "keylogin") { busy(t, true, "Signing in…"); var r = await api("/account/keylogin", { email: v("em"), key: v("lk") }); setTok(r.token); msg = ""; return load(); }
+      if (a === "keylogin") { try { sessionStorage.removeItem("lq_noauto"); } catch (e) { } busy(t, true, "Signing in…"); var r = await api("/account/keylogin", { email: v("em"), key: v("lk") }); setTok(r.token); msg = ""; return load(); }
       if (a === "login") { if (!v("pw")) return say("Enter your password."); busy(t, true, "Signing in…"); var r2 = await api("/account/login", { email: v("em"), h: await stretch(v("em"), v("pw")) }); setTok(r2.token); msg = ""; return load(); }
       if (a === "forgot") { if (!v("em")) return say("Enter your email first."); busy(t, true, "Sending…"); await api("/account/forgot", { email: v("em") }); say("If that email has a Liquara plan, a link is on its way. Check your inbox and spam."); busy(t, false, LABEL.forgot); return; }
       if (a === "reset") {
         var p1 = v("np1"); if (!v("em")) return say("Enter your email."); if (p1.length < 8) return say("Use at least 8 characters."); if (p1 !== v("np2")) return say("The two passwords don't match.");
         busy(t, true, "Saving…"); var r3 = await api("/account/reset", { token: t.dataset.t, email: v("em"), h: await stretch(v("em"), p1) }); setTok(r3.token); history.replaceState(null, "", location.pathname); msg = ""; return load();
       }
-      if (a === "signout") { setTok(""); me = null; msg = ""; return signedOut(); }
+      if (a === "signout") { setTok(""); try { sessionStorage.setItem("lq_noauto", "1"); } catch (e) { } me = null; msg = ""; return signedOut(); }
       if (a === "signoutall") { await api("/account/signout-all"); setTok(""); me = null; msg = "Signed out on every device."; return signedOut(); }
       if (a === "billing") { busy(t, true, "Opening…"); var b = await api("/account/billing", { key: t.dataset.k }); location.href = b.url; return; }
       if (a === "reveal") { var k = document.getElementById("k" + t.dataset.i); if (k) k.textContent = t.dataset.k; t.style.display = "none"; return; }

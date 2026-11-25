@@ -109,3 +109,11 @@
   flow(document.getElementById("flow"), { ribbons: 3, lines: 24, y: innerWidth < 700 ? 0.78 : 0.6 });
   flow(document.getElementById("flow2"), { ribbons: 2, lines: 18, y: 0.5, alpha: 0.7 });
 })();
+/* signed-in customers: the header button opens their dashboard */
+(function () {
+  try {
+    var s = JSON.parse(localStorage.getItem("ao.s") || "{}");
+    if (!(s.license && s.license.until > Date.now())) return;
+    document.querySelectorAll(".demobtn").forEach(function (b) { b.textContent = "My dashboard"; b.setAttribute("href", "app#account"); });
+  } catch (e) { }
+})();
