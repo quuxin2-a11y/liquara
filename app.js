@@ -140,10 +140,12 @@
     ST.charts = {}; var ask = document.querySelector(".askbar"); if (ask) ask.remove();
     applyTheme();
     if (S.pin && !unlocked) { syncNav(false); app.innerHTML = viewLock(); applyLang(); setTimeout(function () { var p = document.getElementById("pinin"); if (p) p.focus(); }, 50); return; }
+    if (ST.launch) { syncNav(false); app.innerHTML = viewLaunch(); applyLang(); launchFlow(); return; }
     if (!ST.res) { syncNav(false); app.innerHTML = ST.model && !ST.model.tx.length ? viewNoBank() : viewOnboard(); applyLang(); return; }
     if (locked() && ["plans", "settings", "about"].indexOf(ST.tab) < 0) ST.tab = "plans";
+    if (tierNeeded() && ["plans", "settings", "about", "data"].indexOf(ST.tab) < 0) ST.tab = "fit";
     syncNav(true);
-    var v = { home: viewPulse, alerts: viewAlerts, budget: viewBudget, actions: viewActions, goals: viewGoals, plans: viewPlans, savings: viewSavings, forecast: viewForecast, insights: viewInsights, decide: viewDecide, ask: viewAsk, data: viewData, settings: viewSettings, about: viewAbout }[ST.tab] || viewHome;
+    var v = { home: viewPulse, alerts: viewAlerts, budget: viewBudget, actions: viewActions, goals: viewGoals, plans: viewPlans, savings: viewSavings, news: viewNews, compete: viewCompete, fit: viewFit, forecast: viewForecast, insights: viewInsights, decide: viewDecide, ask: viewAsk, data: viewData, settings: viewSettings, about: viewAbout }[ST.tab] || viewHome;
     app.innerHTML = v(); wireCharts();
     if (ST.tab === "ask") mountAsk();
     if (ST.tab === "decide") runDecision(true);
@@ -273,6 +275,47 @@
   }
   function setLang(L) { S.lang = L; saveS(); E.setLocale(langLoc()); try { E.setCurrency(S.ccy || "USD", langLoc()); } catch (e) { } if (L === "en") location.reload(); else render(); }
   function langSelect(id) { return '<select class="in" id="' + id + '" data-notr>' + I18N.langs.map(function (l) { return '<option value="' + l[0] + '"' + (l[0] === lang() ? " selected" : "") + ">" + l[1] + "</option>"; }).join("") + "</select>"; }
+
+
+  /* ---------- Android app home: a launcher, not a web page ---------- */
+  function isNative() { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } }
+  function viewLaunch() {
+    var hr = new Date().getHours(), greet = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
+    var lic = paid(), plan = lic && S.license.plan ? PLANS[S.license.plan] : null;
+    var h = '<div class="launch"><div class="lhead">' + HEART + '<b>Liquara</b><span class="lchip ' + (lic ? "on" : "") + '">' + (lic ? (plan ? plan.name : "Active") : "Free preview") + '</span></div>';
+    h += '<div class="lhero"><canvas id="lflow" aria-hidden="true"></canvas><div class="lhin"><div class="lgreet">' + greet + '</div><h1>Know where your cash is going.</h1></div></div>';
+    if (ST.res) {
+      var FC = ST.res.forecast, A = ST.res.analysis, low = Infinity; for (var i = 0; i <= 91 && i < FC.days.length; i++) low = Math.min(low, FC.days[i].p50);
+      var nm = S.demo ? DEMO.get(S.demo).name : (S.biz || "Your business");
+      h += '<button class="lsnap" data-act="lgo" data-to="pulse"><div class="lsrow"><span class="lslab">' + esc(nm) + (S.demo ? ' · sample' : "") + '</span><span class="lsgo">Open →</span></div><div class="lsnums"><div><b>' + m(FC.start) + '</b><span>Cash now</span></div><div><b class="lime">' + Math.round(A.cushionDays || 0) + '</b><span>Days of cash</span></div><div><b>' + m(low) + '</b><span>Low point · 13 wks</span></div></div></button>';
+    }
+    var cards = [["Owner", "Are we OK?", "One glance. Plain words.", "M4 12l5 5L20 6"], ["CFO", "The full picture", "Last 13 and next 13 weeks.", "M4 18V9M10 18V5M16 18v-7M22 18H2"], ["Board", "Ready when they ask", "A one-page brief and PDF.", "M4 5h16v11H4zM9 20h6M12 16v4"]];
+    h += '<div class="lsec">Three views</div><div class="lcards">' + cards.map(function (c) { return '<button class="lcard" data-act="lgo" data-to="lens" data-l="' + c[0] + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + c[3] + '"/></svg><span class="ltag">' + c[0] + "</span><b>" + c[1] + "</b><span>" + c[2] + "</span></button>"; }).join("") + "</div>";
+    h += '<div class="lsec">Your market</div><div class="lcards two"><button class="lcard" data-act="lgo" data-to="news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M8 9h5M8 13h5"/></svg><span class="ltag">News</span><b>What it means for you</b><span>Act now, plan ahead, on the radar.</span></button><button class="lcard" data-act="lgo" data-to="compete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3a3 3 0 0 1-3 3M7 6H4a3 3 0 0 0 3 3"/></svg><span class="ltag">Rivals</span><b>Climb your ranking</b><span>Step by step, big leaps, buying.</span></button></div>';
+    h += '<div class="lacts">';
+    if (lic) h += '<button class="btn pri big full" data-act="lgo" data-to="pulse">Open my dashboard</button>' + (S.demo ? '<button class="btn full" data-act="lgo" data-to="data">Add my own data</button>' : "");
+    else h += '<button class="btn pri big full" data-act="lgo" data-to="plans">Start 14-day free trial</button><button class="btn full" data-act="lgo" data-to="sample">Explore a sample company</button><button class="btn ghost full" data-act="lgo" data-to="key">I have a license key</button>';
+    h += '</div><div class="lfoot">getliquara.com · support@getliquara.com</div></div>';
+    return h;
+  }
+  var lflowRun = 0;
+  function launchFlow() {
+    var c = document.getElementById("lflow"); if (!c || !c.getContext) return;
+    var ctx = c.getContext("2d"), run = ++lflowRun, dpr = Math.min(2, window.devicePixelRatio || 1), t = Math.random() * 50, W, H;
+    function size() { var r = c.getBoundingClientRect(); W = r.width; H = r.height; c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    function draw() {
+      ctx.clearRect(0, 0, W, H); ctx.globalCompositeOperation = "lighter";
+      for (var r = 0; r < 2; r++) for (var l = 0; l < 18; l++) {
+        var k = l / 17, a = (0.06 + 0.4 * Math.pow(1 - Math.abs(k - 0.5) * 2, 2)) * (r ? 0.7 : 1);
+        ctx.strokeStyle = r ? "rgba(46,230,176," + a + ")" : "rgba(200,255,77," + a + ")"; ctx.lineWidth = l === 9 ? 1.6 : 0.8; ctx.beginPath();
+        for (var x = -20; x <= W + 20; x += 10) { var u = x / W, y = H * (0.62 + r * 0.08) + (k - 0.5) * 60 * (0.5 + 0.5 * Math.sin(u * 3 + t * 0.4 + r)) + Math.sin(u * 4 + t * 0.6 + r * 1.7 + k) * H * 0.14; if (x === -20) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
+    function loop() { if (run !== lflowRun || !document.body.contains(c)) return; t += 0.014; draw(); requestAnimationFrame(loop); }
+    size(); if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) draw(); else loop();
+  }
 
   /* ---------- forecast ---------- */
   function hzSeg() { return '<div class="seg" style="margin-bottom:12px">' + [["p13", T("Last 13 weeks")], ["13w", T("Next 13 weeks")], ["12m", T("Next 12 months")]].map(function (o) { return '<button data-hz="' + o[0] + '" class="' + ((ST.hz || "13w") === o[0] ? "on" : "") + '">' + o[1] + "</button>"; }).join("") + "</div>"; }
@@ -497,9 +540,9 @@
   /* ---------- settings, about ---------- */
   function viewSettings() {
     var opt = function (L, v) { return L.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === v ? " selected" : "") + ">" + esc(x[1]) + "</option>"; }).join(""); };
-    var h = head() + '<div class="panel gold"><div class="eyebrow">Your business</div><label class="f"><span>Company name</span><input class="in" id="sco" value="' + esc(S.company || "") + '" placeholder="' + esc(companyName()) + '"></label>' +
+    var h = head() + '<div class="panel gold"><div class="eyebrow">Your business</div>' + coFinder("set") + '<label class="f"><span>Company name</span><input class="in" id="sco" value="' + esc(S.company || "") + '" placeholder="' + esc(companyName()) + '"></label>' +
       '<label class="f"><span>Size (yearly revenue)</span><select class="in" id="ssz">' + opt(SIZES, S.size) + '</select></label><label class="f"><span>Kind of business</span><select class="in" id="sind">' + opt(INDUSTRIES, S.industry) + '</select></label>' +
-      '<label class="f"><span>Report in this currency</span><select class="in" id="sccy">' + ccyList().map(function (c) { return "<option" + (c === (S.ccy || "USD") ? " selected" : "") + ">" + c + "</option>"; }).join("") + '</select></label>' +
+      '<label class="f"><span>Where you operate (city, state or country)</span><input class="in" id="sreg" value="' + esc(S.region || "") + '" placeholder="e.g. Houston, Texas"></label><label class="f"><span>Report in this currency</span><select class="in" id="sccy">' + ccyList().map(function (c) { return "<option" + (c === (S.ccy || "USD") ? " selected" : "") + ">" + c + "</option>"; }).join("") + '</select></label>' +
       '<label class="f"><span>Cash in the bank today (only if your bank file has no balance column)</span><input class="in" id="sbal" inputmode="decimal" value="' + (S.balance != null ? S.balance : "") + '" placeholder="e.g. 250000"></label>' +
       '<label class="f"><span>Liquara helper address (for AI reading, savings checks and payments)</span><input class="in" id="shelper" value="' + esc(S.helperUrl || CFG.worker || "") + '" placeholder="https://liquara-helper.yourname.workers.dev" autocapitalize="off"></label><button class="btn pri" style="margin-top:12px" data-act="saveset">Save</button></div>';
     h += '<div class="panel"><div class="eyebrow">Exchange rates</div><p class="small mute" style="margin:0 0 8px">European Central Bank reference rates, saved for offline use. Last updated ' + esc((S.fx || FX_BUILTIN).date) + '.</p><button class="btn ghost" data-act="fxrefresh">Update rates now</button><div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap"><input class="in" id="cva" inputmode="decimal" value="1000" style="max-width:120px"><select class="in" id="cvf" style="max-width:100px">' + ccyList().map(function (c) { return "<option" + (c === "USD" ? " selected" : "") + ">" + c + "</option>"; }).join("") + '</select><span>→</span><select class="in" id="cvt" style="max-width:100px">' + ccyList().map(function (c) { return "<option" + (c === "EUR" ? " selected" : "") + ">" + c + "</option>"; }).join("") + '</select><button class="btn" data-act="fxconv">Convert</button></div><div class="mid" id="cvr" style="margin-top:8px"></div><div class="row" style="gap:6px;margin-top:12px;flex-wrap:wrap"><input class="in" id="fmc" placeholder="Code, e.g. NGN" style="max-width:150px"><input class="in" id="fmr" placeholder="Per 1 USD" inputmode="decimal" style="max-width:130px"><button class="btn ghost" data-act="fxmanual">Add my own rate</button></div></div>';
@@ -523,7 +566,7 @@
   function sheet(html) { closeSheet(); var s = document.createElement("div"); s.className = "sheet"; s.id = "sheet"; s.innerHTML = '<div class="bd">' + html + "</div>"; s.addEventListener("click", function (e) { if (e.target === s || e.target.closest("[data-close]")) closeSheet(); }); document.body.appendChild(s); }
   function closeSheet() { var s = document.getElementById("sheet"); if (s) s.remove(); }
   function menu() {
-    var it = [["data", "data", "Data & connections"], ["savings", "dec", "Savings finder"], ["alerts", "info", "Payment alerts"], ["budget", "ins", "Budget vs actual"], ["actions", "fc", "Action tracker"], ["goals", "home", "Cash goal"], ["pdf", "pdf", "Board pack (PDF)"], ["lender", "pdf", "Lender packet (PDF)"], ["xlsx", "up", "Excel export"], ["tour", "info", "Replay the walkthrough"], ["plans", "link", "Plan & billing"], ["settings", "gear", "Settings"], ["about", "info", "How it works & privacy"]];
+    var it = [["data", "data", "Data & connections"], ["news", "info", "Sector news"], ["compete", "ins", "Competitors & growth"], ["savings", "dec", "Savings finder"], ["alerts", "info", "Payment alerts"], ["budget", "ins", "Budget vs actual"], ["actions", "fc", "Action tracker"], ["goals", "home", "Cash goal"], ["pdf", "pdf", "Board pack (PDF)"], ["lender", "pdf", "Lender packet (PDF)"], ["xlsx", "up", "Excel export"], ["tour", "info", "Replay the walkthrough"], ["plans", "link", "Plan & billing"], ["settings", "gear", "Settings"], ["about", "info", "How it works & privacy"]];
     sheet('<div class="between"><h2>Menu</h2><button class="ib" data-close>' + ic("x") + "</button></div>" + it.map(function (x) { return '<button class="opt" data-menu="' + x[0] + '"><div class="ic">' + ic(x[1]) + "</div><div><b>" + x[2] + "</b></div></button>"; }).join(""));
   }
 
@@ -674,9 +717,10 @@
   function viewOnboard() {
     var step = ST.ob || (S.size ? (S.industry ? "start" : "industry") : "size");
     var top = '<div class="obtop"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<b>Liquara</b><span style="margin-inline-start:auto;max-width:150px">' + langSelect("oblang") + "</span></div>";
-    if (step === "size") return top + '<div class="ob"><div class="eyebrow">Step 1 of 2</div><h1>How big is your business?</h1><p class="mute">Yearly revenue. We\'ll show you Liquara running a company your size.</p><div class="obgrid">' + SIZES.map(function (x) { return '<button class="opt" data-size="' + x[0] + '"><div class="ic">' + ic("data") + '</div><div><b>' + x[1] + '</b><span>' + ({ s1: "Owner-run shops and studios", s2: "Growing small businesses", s3: "Mid-size companies with a finance team", s4: "Large companies, several entities", s5: "Enterprises and groups" })[x[0]] + "</span></div></button>"; }).join("") + "</div></div>";
+    if (step === "size") return top + '<div class="ob"><div class="eyebrow">Step 1 of 2</div><h1>How big is your business?</h1><p class="mute">Yearly revenue. We\'ll show you Liquara running a company your size.</p>' + coFinder("ob") + '<div class="ordiv"><span>or pick a size</span></div><div class="obgrid">' + SIZES.map(function (x) { return '<button class="opt" data-size="' + x[0] + '"><div class="ic">' + ic("data") + '</div><div><b>' + x[1] + '</b><span>' + ({ s1: "Owner-run shops and studios", s2: "Growing small businesses", s3: "Mid-size companies with a finance team", s4: "Large companies, several entities", s5: "Enterprises and groups" })[x[0]] + "</span></div></button>"; }).join("") + "</div></div>";
     if (step === "industry") return top + '<div class="ob"><div class="eyebrow">Step 2 of 2</div><h1>What kind of business?</h1><p class="mute">Used to compare you with businesses like yours.</p><div class="chips" style="flex-wrap:wrap">' + INDUSTRIES.map(function (x) { return '<button class="chip" data-ind="' + x[0] + '">' + x[1] + "</button>"; }).join("") + '</div><button class="btn ghost" style="margin-top:18px" data-ob="size">Back</button></div>';
-    return top + '<div class="ob"><h1>Ready when you are</h1><button class="btn pri full" data-act="tour">Watch how it works (60 sec)</button><button class="btn ghost full" style="margin-top:10px" data-act="sample">Skip to the sample company</button></div>';
+    var cc = S.co ? '<div class="cocard" style="margin-bottom:16px"><div class="grow"><div class="tiny mute">We found your company</div><b>' + esc(S.co.name) + "</b>" + (S.co.tickers && S.co.tickers[0] ? ' <span class="chip">' + esc(S.co.tickers[0]) + "</span>" : "") + '<div class="tiny mute">' + esc([S.co.sector, [S.co.city, S.co.state].filter(Boolean).join(", "), S.co.revenue ? "~" + m(S.co.revenue) + " revenue" : ""].filter(Boolean).join(" · ")) + '</div></div></div>' : "";
+    return top + '<div class="ob"><h1>Ready when you are</h1>' + cc + '<button class="btn pri full" data-act="tour">Watch how it works (60 sec)</button><button class="btn ghost full" style="margin-top:10px" data-act="sample">Skip to the sample company</button></div>';
   }
   /* the walkthrough plays like a short video, built from the sample company's real results */
   var TOUR = null;
@@ -832,8 +876,9 @@
     if (!helperReady()) throw new Error("The Liquara helper isn't set up yet");
     var H = plug("CapacitorHttp"), url = CFG.worker.replace(/\/$/, "") + path, hd = { "Content-Type": "application/json" };
     if (S.license && S.license.code) hd["X-Liquara-License"] = S.license.code; if (S.device) hd["X-Liquara-Device"] = S.device;
-    if (H) { var r = await H.post({ url: url, headers: hd, data: body }); if (r.status >= 400) throw new Error((r.data && r.data.error) || "Helper said " + r.status); return typeof r.data === "string" ? JSON.parse(r.data) : r.data; }
-    var res = await fetch(url, { method: "POST", headers: hd, body: JSON.stringify(body) }); var j = await res.json().catch(function () { return {}; }); if (!res.ok) throw new Error(j.error || "Helper said " + res.status); return j;
+    var fail = function (st, d) { var e = new Error((d && d.error) || "Helper said " + st); e.status = st; e.code = (d && d.code) || ""; if (e.code === "tier" && S.license) { var mt = /Switch to (\w+)/.exec(e.message); if (mt && PLANS[mt[1].toLowerCase()]) { S.license.needs = mt[1].toLowerCase(); saveS(); setTimeout(render, 0); } } return e; };
+    if (H) { var r = await H.post({ url: url, headers: hd, data: body }); var rd = typeof r.data === "string" ? (function () { try { return JSON.parse(r.data); } catch (x) { return {}; } })() : r.data; if (r.status >= 400) throw fail(r.status, rd); return rd; }
+    var res = await fetch(url, { method: "POST", headers: hd, body: JSON.stringify(body) }); var j = await res.json().catch(function () { return {}; }); if (!res.ok) throw fail(res.status, j); return j;
   }
   function askConsent() { return new Promise(function (ok) { if (S.aiOk) return ok(true); sheet('<h2>Use AI to read this?</h2><p class="mute">Files Liquara can\'t read on the device (PDFs, photos, unusual layouts) are sent securely to the AI service to be read, then filed in the right place. Liquara keeps no copy on any server.</p><div class="row" style="gap:8px"><button class="btn pri" id="aiyes">Yes, use AI</button><button class="btn ghost" id="aino">No</button></div>'); document.getElementById("aiyes").onclick = function () { S.aiOk = true; saveS(); closeSheet(); ok(true); }; document.getElementById("aino").onclick = function () { closeSheet(); ok(false); }; }); }
   function b64of(u8) { var s = ""; for (var i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
@@ -860,6 +905,186 @@
     var sec = function (t, L) { return L && L.length ? '<div class="sv"><div class="lab">' + t + "</div>" + L.map(function (o) { return '<div class="svi"><b>' + esc(o.name) + "</b> · " + esc(o.price || "price on request") + (o.saves ? ' · <span class="pos">saves ~' + esc(o.saves) + "</span>" : "") + (o.note ? '<div class="tiny mute">' + esc(o.note) + "</div>" : "") + (o.url ? '<a class="tiny" href="' + esc(o.url) + '" target="_blank" rel="noopener">source</a>' : "") + "</div>"; }).join("") + "</div>" : ""; };
     return sec("Similar, cheaper", r.similar) + sec("Different approach, bigger savings", r.different) + '<div class="tiny mute">Checked ' + esc(r.checked || "") + ". Confirm quotes before switching.</div>";
   }
+  /* ================= Market intelligence: sector news, competitors, plan fit ================= */
+  var TIER_ORDER = ["owner", "business", "enterprise"], TIER_CAP = { owner: 10e6, business: 100e6 };
+  var SIZE_REV = { s1: 0, s2: 0, s3: 12e6, s4: 120e6, s5: 1.2e9 };
+  function tierOf(rev) { if (rev > TIER_CAP.business * 1.15) return "enterprise"; if (rev > TIER_CAP.owner * 1.15) return "business"; return "owner"; }
+  function trank(t) { return Math.max(0, TIER_ORDER.indexOf(t)); }
+  function dataRev() { if (S.demo || !ST.res || !ST.res.analysis) return 0; return Math.max(0, Math.round((ST.res.analysis.inMonth || 0) * 12)); }
+  function sizeRev() { return S.demo ? 0 : SIZE_REV[S.size] || 0; }
+  function fitRev() { return Math.max(dataRev(), sizeRev(), coRev()); }
+  /* the plan this business must be on; never suggests going down */
+  function tierNeeded() {
+    if (!paid() || S.demo) return "";
+    var cur = S.license.plan || "owner", need = tierOf(fitRev());
+    if (S.license.needs && trank(S.license.needs) > trank(need)) need = S.license.needs;
+    return trank(need) > trank(cur) ? need : "";
+  }
+  function viewFit() {
+    var need = tierNeeded(), cur = S.license.plan || "owner", P = PLANS[need], C = PLANS[cur] || PLANS.owner;
+    return head() + '<div class="panel gold fitbox"><div class="eyebrow">Plan check</div><h2>Your business has grown past ' + esc(C.name) + '</h2>' +
+      '<p class="small mute">' + (coRev() >= Math.max(dataRev(), sizeRev()) ? esc(S.co.name) + "'s latest yearly revenue is about <b>" + m(coRev()) + "</b> (" + esc(S.co.source || "") + ")." : dataRev() > sizeRev() ? "Your own numbers show about <b>" + m(dataRev()) + "</b> coming in a year." : "You told us your business brings in " + esc((SIZES.filter(function (x) { return x[0] === S.size; })[0] || [0, ""])[1]) + " a year.") + " The " + esc(C.name) + " plan is for " + esc(C.who.replace(/^Under/, "under")) + ". You fit <b>" + esc(P.name) + "</b> (" + esc(P.who) + ").</p>" +
+      '<div class="fitcmp"><div><span>Now</span><b>' + esc(C.name) + "</b></div><div class=\"arrow\">→</div><div class=\"on\"><span>Your fit</span><b>" + esc(P.name) + "</b><em>from " + m(P.m) + " a month</em></div></div>" +
+      '<p class="small mute">You keep everything you\'ve set up. Stripe only charges the difference for the days left in this billing period. Until you switch, your dashboards and AI features are paused. Settings and your data stay open.</p>' +
+      '<button class="btn pri full" style="padding:15px;font-size:17px" data-act="upgrade" data-plan="' + need + '">Switch to ' + esc(P.name) + '</button>' +
+      '<button class="btn ghost full" style="margin-top:8px" data-act="fitwrong">These numbers aren\'t right</button></div>' +
+      '<div class="panel"><div class="eyebrow">Why we check</div><p class="small mute" style="margin:0">Each plan is priced for a size of business, so smaller companies pay less. We never move anyone down: if you chose a bigger plan than you need, you keep it and the room to grow.</p></div>' + foot();
+  }
+  async function doUpgrade(plan) {
+    if (!helperReady()) { toast("The Liquara helper isn't connected"); return; }
+    toast("Switching your plan…");
+    try { var r = await helper("/upgrade", { plan: plan }); await setLicense(r.code, r); S.license.needs = ""; saveS(); toast("You're on " + PLANS[r.plan].name + " now"); go("home"); }
+    catch (e) { toast("Couldn't switch: " + e.message); }
+  }
+
+  /* ---------- find your company (stock ticker or name) ---------- */
+  function sicInd(sic) {
+    sic = +sic || 0;
+    if (sic >= 5800 && sic < 5900) return "restaurant"; if (sic >= 7370 && sic < 7380) return "software"; if (sic >= 8000 && sic < 8100) return "health";
+    if (sic >= 1500 && sic < 1800) return "construction"; if (sic >= 2000 && sic < 4000) return "manufacturing"; if (sic >= 5000 && sic < 5200) return "wholesale";
+    if (sic >= 5200 && sic < 6000) return "retail"; if (sic >= 6500 && sic < 6600) return "realestate"; if ((sic >= 7200 && sic < 7300) || (sic >= 7500 && sic < 7700)) return "services";
+    if ((sic >= 8100 && sic < 9000) || (sic >= 7300 && sic < 7370) || (sic >= 7380 && sic < 7400)) return "professional"; return "other";
+  }
+  function sizeOf(rev) { return rev >= 1e9 ? "s5" : rev >= 100e6 ? "s4" : rev >= 10e6 ? "s3" : rev >= 1e6 ? "s2" : "s1"; }
+  function sector() { return S.co && S.co.sector && !S.demo ? S.co.sector : industry()[1]; }
+  function coRev() { return S.co && !S.demo ? +S.co.revenue || 0 : 0; }
+  function coFinder(where) {
+    var c = S.co && !S.demo ? S.co : null;
+    return '<div class="cofind"><label class="f"><span>Find your company: name or stock ticker</span><input class="in" id="cofq" data-cof="' + where + '" autocomplete="off" autocapitalize="off" placeholder="e.g. Acme Bakery, or AAPL"></label><div class="cofl" id="cofl"></div>' +
+      (c ? '<div class="cocard"><div class="grow"><b>' + esc(c.name) + "</b>" + (c.tickers && c.tickers[0] ? ' <span class="chip">' + esc(c.tickers[0]) + (c.exchanges && c.exchanges[0] ? " · " + esc(c.exchanges[0]) : "") + "</span>" : "") + '<div class="tiny mute">' + esc([c.sector, [c.city, c.state].filter(Boolean).join(", "), c.revenue ? "~" + m(c.revenue) + " revenue" + (c.revenueYear ? " (" + String(c.revenueYear).slice(0, 4) + ")" : "") : ""].filter(Boolean).join(" · ")) + '</div><div class="tiny dim">' + esc(c.source || "") + '</div></div><button class="chip" data-act="counlink">Remove</button></div>' : "") + "</div>";
+  }
+  var cofT = 0, cofSeq = 0;
+  function cofList(html) { var l = document.getElementById("cofl"); if (l) l.innerHTML = html; }
+  function cofSearch(q) {
+    clearTimeout(cofT); q = q.trim(); if (!q) { cofList(""); return; }
+    cofT = setTimeout(async function () {
+      var my = ++cofSeq;
+      if (!helperReady()) { cofList('<div class="cofi msg">Company search turns on once the Liquara helper is connected.</div>'); return; }
+      cofList('<div class="cofi"><span class="spin"></span></div>');
+      try {
+        var r = await helper("/company/search", { q: q }); if (my !== cofSeq) return; ST.cofq = q;
+        cofList((r.results || []).map(function (x) { return '<button class="cofi" data-act="copick" data-cik="' + x.cik + '"><b>' + esc(x.ticker || "") + "</b><span>" + esc(x.name) + '</span><em>' + esc(x.exchange || "") + "</em></button>"; }).join("") +
+          '<button class="cofi web" data-act="cofweb">' + (r.results && r.results.length ? "Not these?" : "Not on the stock market?") + " Search the web for “" + esc(q) + "”</button>");
+      } catch (e) { if (my === cofSeq) cofList('<div class="cofi msg">' + esc(e.message) + "</div>"); }
+    }, 250);
+  }
+  function applyCo(c) {
+    S.co = c; S.company = c.name; if (c.city || c.state) S.region = [c.city, c.state].filter(Boolean).join(", ");
+    if (c.sic) S.industry = sicInd(c.sic); else if (c.ind) S.industry = c.ind;
+    if (c.revenue) S.size = sizeOf(c.revenue); saveS();
+  }
+  async function pickCo(cik) {
+    cofList('<div class="cofi"><span class="spin"></span> Reading the company\'s filings…</div>');
+    try { var c = await helper("/company", { cik: cik }); applyCo(c); toast("Filled in from " + c.name + "'s SEC filings"); if (!ST.res) ST.ob = "start"; render(); }
+    catch (e) { cofList('<div class="cofi msg">' + esc(e.message) + "</div>"); }
+  }
+  async function webCo() {
+    var q = ST.cofq || (document.getElementById("cofq") || {}).value || "";
+    if (!paid()) { cofList('<div class="cofi msg">Private companies can be looked up once your trial starts. For now, just pick your size and kind of business below.</div>'); return; }
+    cofList('<div class="cofi"><span class="spin"></span> Searching the web for “' + esc(q) + '”…</div>');
+    try {
+      var r = await helper("/company/find", { name: q, region: region() }); ST.webCo = r.matches || [];
+      cofList(ST.webCo.length ? ST.webCo.map(function (x, i) { return '<button class="cofi" data-act="cowebpick" data-i="' + i + '"><b>' + esc(x.name) + "</b><span>" + esc([x.industry, [x.city, x.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")) + "</span><em>" + (x.revenue ? "~" + m(x.revenue) : "") + "</em></button>"; }).join("") : '<div class="cofi msg">No match found. Type your company name in Settings and pick your size.</div>');
+    } catch (e) { cofList('<div class="cofi msg">' + esc(e.message) + "</div>"); }
+  }
+  function pickWebCo(i) {
+    var x = ST.webCo[i]; if (!x) return;
+    var ind = INDUSTRIES.filter(function (k) { return x.industry && new RegExp(k[1].split(/[ ,]/)[0], "i").test(x.industry); })[0];
+    applyCo({ name: x.name, sector: x.industry || "", city: x.city || "", state: x.state || "", website: x.website || "", revenue: +x.revenue || 0, ind: ind ? ind[0] : S.industry, tickers: x.ticker ? [x.ticker] : [], listed: !!x.listed, source: "Web search" + (x.revenueNote ? " · revenue: " + x.revenueNote : "") });
+    toast("Filled in " + x.name); render();
+  }
+
+  /* ---------- sector news ---------- */
+  var LEVELS = { now: ["Act now", "Likely to hit your cash or operations within weeks", "lvnow"], soon: ["Plan ahead", "A clear effect in the next few months", "lvsoon"], watch: ["On the radar", "Worth knowing; could matter later", "lvwatch"] };
+  function region() { return S.region || ""; }
+  function sampleNews() {
+    var ind = industry()[1].toLowerCase();
+    return { sample: true, takeaway: "Costs are steady, borrowing is getting a little cheaper, and customers are spending carefully: a good time to lock in prices and lean on loyal regulars.", checked: new Date().toISOString(), items: [
+      { level: "now", headline: "Main supplier raises delivery fees from next month", source: "Sample trade journal", date: "", summary: "Large distributors in your area are adding a fuel and delivery surcharge.", forYou: "Expect supply bills about 2-4% higher starting next month.", move: "Ask your top two suppliers for a fixed-price quote this week.", confidence: "medium" },
+      { level: "now", headline: "State raises minimum wage on January 1", source: "Sample state labor office", date: "", summary: "The hourly minimum goes up, with no exemption for small employers.", forYou: "Payroll for hourly staff likely rises about 3-5% from January.", move: "Run 'What if payroll goes up 4%?' in Decide before setting next year's prices.", confidence: "high" },
+      { level: "soon", headline: "Central bank signals another rate cut", source: "Sample business wire", date: "", summary: "Officials hinted borrowing costs could fall again early next year.", forYou: "A line of credit or equipment loan could get cheaper in a few months.", move: "Hold off on fixed-rate borrowing unless you need it now.", confidence: "medium" },
+      { level: "soon", headline: "Shoppers trade down as holiday budgets tighten", source: "Sample national paper", date: "", summary: "Surveys show people buying fewer but cheaper items.", forYou: "Average sale size may slip a few percent through the season for a " + ind + ".", move: "Push a simple bundle or loyalty offer instead of discounting everything.", confidence: "medium" },
+      { level: "watch", headline: "New payment rules for card processors under review", source: "Sample regulator release", date: "", summary: "A proposal would cap some card fees for small merchants.", forYou: "If passed, card fees could drop slightly next year.", move: "Nothing to do yet. Liquara will flag it if it moves.", confidence: "low" }
+    ] };
+  }
+  function newsCard(n) {
+    return '<div class="nwi"><div class="nwh">' + esc(n.headline) + '</div><div class="tiny dim">' + esc(n.source || "") + (n.date ? " · " + esc(n.date) : "") + (n.confidence ? " · " + esc(n.confidence) + " confidence" : "") + '</div>' +
+      (n.summary ? '<p class="small">' + esc(n.summary) + "</p>" : "") +
+      '<div class="nwm"><span>What it means for you</span>' + esc(n.forYou || n.means || "") + "</div>" +
+      (n.move ? '<div class="nwm mv"><span>Your move</span>' + esc(n.move) + "</div>" : "") +
+      (n.url ? '<a class="tiny" href="' + esc(n.url) + '" target="_blank" rel="noopener">Read the source ↗</a>' : "") + "</div>";
+  }
+  function viewNews() {
+    var real = paid() && !S.demo, d = real ? (S.news && S.news.data) : sampleNews(), busy = ST.newsBusy;
+    var h = head() + '<div class="panel gold"><div class="eyebrow">Sector news</div><h2>What the world\'s news means for your business</h2><p class="small mute" style="margin:6px 0 10px">AI reads many trusted sources, keeps only what matters to a business like yours, and says what it means in plain words.</p>' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap"><span class="chip">' + esc(real ? sector() : industry()[1]) + '</span><span class="chip">' + esc(region() || "Add where you operate in Settings") + "</span></div>" +
+      (real ? '<button class="btn pri" style="margin-top:12px" data-act="news"' + (busy ? " disabled" : "") + ">" + (busy ? '<span class="spin"></span> Reading the news…' : d ? "Refresh" : "Get my news") + "</button>" : '<p class="note">This is a sample. Your own live news briefing unlocks with your plan.</p>') + "</div>";
+    if (!d) return h + foot();
+    if (d.takeaway) h += '<div class="panel nwtake"><div class="eyebrow">The big picture</div><p style="margin:0">' + esc(d.takeaway) + "</p></div>";
+    ["now", "soon", "watch"].forEach(function (lv) {
+      var L = (d.items || []).filter(function (x) { return (x.level || "watch") === lv; }); if (!L.length) return;
+      h += '<div class="panel ' + LEVELS[lv][2] + '"><div class="lvh"><b>' + LEVELS[lv][0] + "</b><span>" + LEVELS[lv][1] + "</span></div>" + L.map(newsCard).join("") + "</div>";
+    });
+    h += '<p class="tiny mute" style="text-align:center">' + (d.sample ? "Sample briefing" : "Checked " + esc(new Date(d.checked).toLocaleString())) + ". News summaries are a starting point, not advice; open the source before acting.</p>";
+    return h + foot();
+  }
+  async function getNews(fresh) {
+    if (gate("Your live news briefing unlocks with your free trial.")) return;
+    if (!helperReady()) { toast("Connect the Liquara helper in Settings first"); return; }
+    ST.newsBusy = true; render();
+    try { var r = await helper("/news", { industry: sector(), region: region() || "United States", size: (SIZES.filter(function (x) { return x[0] === S.size; })[0] || [0, ""])[1], fresh: !!fresh }); S.news = { at: Date.now(), key: industry()[0] + "|" + region(), data: r }; saveS(); }
+    catch (e) { toast((e.code === "tier" || e.code === "limit") ? e.message : "Couldn't get the news: " + e.message); }
+    ST.newsBusy = false; render();
+  }
+
+  /* ---------- competitors and growth ---------- */
+  function sampleCompete() {
+    var nm = S.demo ? DEMO.get(S.demo).name : "You";
+    return { sample: true, market: "Independent and chain businesses serving the same customers in your area", position: { place: 4, of: 7, summary: "You're a solid mid-pack player: well liked, but smaller and with fewer ways to buy than the top three." },
+      rank: [{ name: "Regional chain (sample)", est: "~$40M, 22 locations", strengths: "Brand, buying power, app ordering" }, { name: "Local leader (sample)", est: "~$9M, 4 locations", strengths: "Catering contracts, strong reviews" }, { name: "Fast-growing newcomer (sample)", est: "~$5M, 2 locations", strengths: "Delivery-first, heavy social media" }, { name: nm, est: "Your numbers", strengths: "Loyal regulars, quality", you: true }, { name: "Neighborhood shop (sample)", est: "~$1.5M, 1 location", strengths: "Low prices" }, { name: "Older family business (sample)", est: "~$1.2M, 1 location", strengths: "Long history; owner nearing retirement" }, { name: "Market stall (sample)", est: "under $0.5M", strengths: "Weekend markets" }],
+      nextRung: { name: "Fast-growing newcomer (sample)", gap: "About 40% more sales, mostly from delivery and online orders.", closeIt: "Add online ordering and one delivery partner; most of the gap is reach, not product." },
+      stepByStep: [{ step: "Turn on online ordering and one delivery app", why: "Closes the biggest gap with the next rung", timeframe: "2-4 weeks", cost: "low" }, { step: "Win 3 office or event catering accounts", why: "Big, repeat orders smooth cash flow", timeframe: "1-3 months", cost: "low" }, { step: "Raise prices 3% on best sellers", why: "Costs are rising; regulars rarely notice small moves", timeframe: "now", cost: "low" }, { step: "Ask every happy customer for a review", why: "Reviews decide local rankings", timeframe: "ongoing", cost: "low" }],
+      bigLeap: [{ move: "Open a second location in a busy area", why: "Could double sales and pass two rivals", risk: "Ties up cash for 12-18 months", cost: "high" }, { move: "Wholesale to grocers and cafés", why: "New revenue without new storefronts", risk: "Thinner margins, bigger orders to fund", cost: "medium" }],
+      buy: { sameField: [{ target: "The older family business whose owner is retiring", why: "Instant second location, existing customers, staff already trained", price: "typically 2-3x yearly profit", pay: "Seller financing plus a small bank or SBA loan", risk: "Customers may leave with the owner; keep them involved for a few months" }],
+        newFields: [{ field: "Catering and event services", why: "Same kitchen, same suppliers, bigger orders", entry: "Buy a small caterer or start in-house", price: "typically 2-4x yearly profit", risk: "Seasonal; needs a deposit policy" }, { field: "Packaged goods for local grocers", why: "Sells your best products through other people's shelves", entry: "Partner first, buy later", price: "varies", risk: "Labeling and food-safety rules" }],
+        ready: "Possible in about a year: build three months of cash cushion, get two years of clean books, and talk to a lender before approaching a seller." },
+      tools: [{ name: "Online ordering system", what: "Takes orders and payments online", fit: "Closes the delivery gap", price: "from about $50/month" }, { name: "AI review responder", what: "Drafts replies to reviews in your voice", fit: "More and better reviews, less time", price: "from about $20/month" }, { name: "AI social post scheduler", what: "Plans a month of posts in an hour", fit: "Matches the newcomer's social reach", price: "from about $15/month" }],
+      liquara: ["Use Decide to test a second location: rent, staff and ramp-up time against your cash.", "Set a cash goal in Liquara for the down payment on an acquisition.", "Run the Savings finder before you expand so you grow on a lean cost base.", "Send the lender packet when you're ready to borrow."] };
+  }
+  function costTag(c) { c = String(c || "").toLowerCase(); return c ? '<span class="ctag c' + (c.indexOf("high") >= 0 ? "h" : c.indexOf("med") >= 0 ? "m" : "l") + '">' + esc(c) + " cost</span>" : ""; }
+  function viewCompete() {
+    var real = paid() && !S.demo, d = real ? S.compete : sampleCompete(), busy = ST.compBusy, sec = ST.compSec || "climb";
+    var h = head() + '<div class="panel gold"><div class="eyebrow">Competitors & growth</div><h2>Where you stand, and how to climb</h2><p class="small mute" style="margin:6px 0 10px">AI maps the real businesses competing for your customers, ranks them, and builds a plan to move up: step by step, with a big leap, or by buying.</p>' +
+      (real ? '<label class="f"><span>What you sell and who buys it (optional, makes it sharper)</span><textarea class="in" id="cnotes" placeholder="e.g. Artisan bakery, wholesale to 6 cafés, catering for offices">' + esc(S.compNotes || "") + '</textarea></label><button class="btn pri" style="margin-top:10px" data-act="compete"' + (busy ? " disabled" : "") + ">" + (busy ? '<span class="spin"></span> Mapping your market…' : d ? "Rebuild my report" : "Build my report") + "</button>" : '<p class="note">This is a sample. Your own live report unlocks with your plan.</p>') + "</div>";
+    if (!d) return h + foot();
+    var P = d.position || {};
+    h += '<div class="panel cpos"><div class="cbig"><span>#' + esc(P.place || "?") + '</span><em>of ' + esc(P.of || (d.rank || []).length) + "</em></div><div><div class=\"eyebrow\">Your position</div><p class=\"small\" style=\"margin:0\">" + esc(P.summary || "") + "</p><p class=\"tiny mute\" style=\"margin:6px 0 0\">" + esc(d.market || "") + "</p></div></div>";
+    h += '<div class="panel"><div class="eyebrow">The ladder</div><ol class="ladder">' + (d.rank || []).map(function (r, i) { return '<li class="' + (r.you ? "you" : "") + '"><span class="lr">' + (i + 1) + '</span><div class="grow"><b>' + esc(r.name) + (r.you ? " · you" : "") + '</b><div class="tiny mute">' + esc(r.est || "") + (r.strengths ? " · " + esc(r.strengths) : "") + "</div></div>" + (r.url ? '<a class="tiny" href="' + esc(r.url) + '" target="_blank" rel="noopener">↗</a>' : "") + "</li>"; }).join("") + "</ol>" +
+      (d.nextRung && d.nextRung.name ? '<div class="nwm mv"><span>Next rung: ' + esc(d.nextRung.name) + "</span>" + esc(d.nextRung.gap || "") + (d.nextRung.closeIt ? "<br><b>Close it:</b> " + esc(d.nextRung.closeIt) : "") + "</div>" : "") + "</div>";
+    var tabs = [["climb", "Step by step"], ["leap", "Big leap"], ["buy", "Grow by buying"], ["tools", "Tools"]];
+    h += '<div class="seg" style="margin-bottom:12px">' + tabs.map(function (t) { return '<button data-act="csec" data-s="' + t[0] + '" class="' + (sec === t[0] ? "on" : "") + '">' + t[1] + "</button>"; }).join("") + "</div><div class=\"panel\">";
+    if (sec === "climb") h += '<div class="eyebrow">Climb one rung at a time</div>' + (d.stepByStep || []).map(function (s, i) { return '<div class="gstep"><span class="gn">' + (i + 1) + '</span><div class="grow"><b>' + esc(s.step) + '</b><div class="tiny mute">' + esc(s.why || "") + (s.timeframe ? " · " + esc(s.timeframe) : "") + "</div></div>" + costTag(s.cost) + "</div>"; }).join("");
+    if (sec === "leap") h += '<div class="eyebrow">Jump several places</div>' + (d.bigLeap || []).map(function (s) { return '<div class="gstep"><div class="grow"><b>' + esc(s.move) + '</b><div class="small">' + esc(s.why || "") + '</div><div class="tiny warn">Risk: ' + esc(s.risk || "") + "</div></div>" + costTag(s.cost) + "</div>"; }).join("") + '<button class="btn ghost full" style="margin-top:8px" data-act="lgo2" data-to="decide">Test a big move against your cash</button>';
+    if (sec === "buy") { var B = d.buy || {};
+      h += '<div class="eyebrow">Buy within your field</div>' + (B.sameField || []).map(function (s) { return '<div class="gstep"><div class="grow"><b>' + esc(s.target) + '</b><div class="small">' + esc(s.why || "") + '</div><div class="tiny mute">Typical price: ' + esc(s.price || "varies") + " · How it's paid for: " + esc(s.pay || "") + '</div><div class="tiny warn">Risk: ' + esc(s.risk || "") + "</div></div></div>"; }).join("") +
+        '<div class="eyebrow" style="margin-top:14px">Expand into a new field</div>' + (B.newFields || []).map(function (s) { return '<div class="gstep"><div class="grow"><b>' + esc(s.field) + '</b><div class="small">' + esc(s.why || "") + '</div><div class="tiny mute">How to enter: ' + esc(s.entry || "") + " · Typical price: " + esc(s.price || "varies") + '</div><div class="tiny warn">Risk: ' + esc(s.risk || "") + "</div></div></div>"; }).join("") +
+        (B.ready ? '<div class="nwm mv"><span>Are you ready to buy?</span>' + esc(B.ready) + "</div>" : "") + '<button class="btn ghost full" style="margin-top:8px" data-act="lgo2" data-to="decide">Can I afford it? Test it in Decide</button><p class="tiny mute">Prices are typical ranges, not quotes. Talk to a business broker, lender and accountant before making an offer.</p>'; }
+    if (sec === "tools") h += '<div class="eyebrow">Tools to speed it up</div>' + (d.tools || []).map(function (s) { return '<div class="gstep"><div class="grow"><b>' + esc(s.name) + '</b><div class="small">' + esc(s.what || "") + (s.fit ? " · " + esc(s.fit) : "") + '</div><div class="tiny mute">' + esc(s.price || "") + (s.url ? ' · <a href="' + esc(s.url) + '" target="_blank" rel="noopener">site ↗</a>' : "") + "</div></div></div>"; }).join("") +
+      ((d.liquara || []).length ? '<div class="eyebrow" style="margin-top:14px">How Liquara helps</div>' + d.liquara.map(function (x) { return '<div class="gstep"><span class="gn">' + HEART_SM + '</span><div class="grow small">' + esc(x) + "</div></div>"; }).join("") : "");
+    h += "</div>";
+    h += '<p class="tiny mute" style="text-align:center">' + (d.sample ? "Sample report with made-up businesses" : "Built " + esc(new Date(d.checked).toLocaleString()) + ". Sizes are estimates from public sources") + ". Not financial or legal advice.</p>";
+    return h + foot();
+  }
+  var HEART_SM = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="#c8ff4d" d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.2 5.4 3.2 1.8-2 3.3-3.2 5.4-3.2 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z"/></svg>';
+  async function getCompete() {
+    if (gate("Your competitor report unlocks with your free trial.")) return;
+    if (!helperReady()) { toast("Connect the Liquara helper in Settings first"); return; }
+    var nt = document.getElementById("cnotes"); if (nt) S.compNotes = nt.value.trim();
+    ST.compBusy = true; render();
+    try { var r = await helper("/compete", { industry: sector(), region: region() || "United States", revenue: coRev() || dataRev() || sizeRev() || undefined, name: S.company || "", ticker: S.co && S.co.tickers && S.co.tickers[0] || "", notes: S.compNotes || "" }); S.compete = r; ST.compSec = "climb"; saveS(); }
+    catch (e) { toast((e.code === "tier" || e.code === "limit") ? e.message : "Couldn't build the report: " + e.message); }
+    ST.compBusy = false; render();
+  }
   async function findSavings(i) {
     var r = ST.savingsList[i]; if (!r) return;
     if (!helperReady()) { toast("Connect the Liquara helper in Settings to run live price checks"); return; }
@@ -871,27 +1096,29 @@
   /* ---------- plans, trial and in-app checkout ---------- */
   function viewPlans() {
     var per = ST.per || "month", rec = planFor(), t = null;
+    if (!paid() && S.licMsg && !ST.gateMsg) ST.gateMsg = S.licMsg;
     var gm = !paid() && ST.gateMsg ? '<div class="panel" style="border-color:rgba(200,255,77,.5)"><b>' + esc(ST.gateMsg) + '</b><p class="small mute" style="margin:6px 0 0">Until then you can explore the sample company as much as you like.</p><button class="btn ghost sm" data-act="backdemo" style="margin-top:10px">Back to the sample</button></div>' : "";
     var h = head() + gm + '<div class="panel gold"><div class="eyebrow">Plans</div><h2>' + (paid() ? "You're subscribed" : t != null ? (t ? t + " days left in your trial" : "Your free trial has ended") : "Start your " + TRIAL_DAYS + "-day free trial") + '</h2><p class="small mute" style="margin:6px 0 0">' + (paid() ? "Plan: " + esc(S.license.plan) + ". Manage your card or cancel below." : "Your card is saved securely by Stripe and charged when the trial ends. Cancel any time in the app.") + '</p></div><div class="seg" style="margin-bottom:12px">' + Object.keys(PERIODS).map(function (k) { return '<button data-per="' + k + '" class="' + (per === k ? "on" : "") + '">' + PERIODS[k][0] + (PERIODS[k][2] < 1 ? " · save " + Math.round((1 - PERIODS[k][2]) * 100) + "%" : "") + "</button>"; }).join("") + '</div><div class="plans">';
-    h += Object.keys(PLANS).map(function (k) { var p = PLANS[k], price = priceOf(k, per); return '<div class="panel plan ' + (k === rec ? "rec" : "") + '">' + (k === rec ? '<span class="badge g">Fits your size</span>' : "") + "<h3>" + p.name + '</h3><div class="small mute">' + p.who + '</div><div class="price">' + m(price).replace(/\.0K/, "K") + '<span>/' + ({ month: "month", quarter: "quarter", year: "year" })[per] + '</span></div><ul class="small"><li>All three views, forecasting and alerts</li><li>' + p.checks + " AI savings checks a month</li><li>" + (k === "owner" ? "1 company" : k === "business" ? "Up to 5 companies, budget vs actual" : "Unlimited companies, currencies, bank files, priority help") + '</li></ul><button class="btn ' + (k === rec ? "pri" : "") + ' full" data-buy="' + k + '">' + (paid() ? "Switch" : "Start free trial") + "</button></div>"; }).join("");
-    h += '</div><div id="checkout"></div>' + (paid() ? '<button class="btn ghost" data-act="portal">Update card or cancel</button>' : "") + '<div class="panel"><div class="eyebrow">Have a license code?</div><div class="row" style="gap:8px"><input class="in" id="lic" placeholder="LQ1…"><button class="btn" data-act="lic">Unlock</button></div></div>';
+    h += Object.keys(PLANS).map(function (k) { var p = PLANS[k], price = priceOf(k, per); return '<div class="panel plan ' + (k === rec ? "rec" : "") + '">' + (k === rec ? '<span class="badge g">Fits your size</span>' : "") + "<h3>" + p.name + '</h3><div class="small mute">' + p.who + '</div><div class="price">' + m(price).replace(/\.0K/, "K") + '<span>/' + ({ month: "month", quarter: "quarter", year: "year" })[per] + '</span></div><ul class="small"><li>All three views, forecasting and alerts</li><li>' + p.checks + " AI savings checks a month</li><li>" + (k === "owner" ? "1 company" : k === "business" ? "Up to 5 companies, budget vs actual" : "Unlimited companies, currencies, bank files, priority help") + '</li></ul><button class="btn ' + (k === rec ? "pri" : "") + ' full" data-buy="' + k + '">' + (paid() ? "Switch" : "Start free trial") + '</button><div class="cobox" id="co-' + k + '"></div></div>'; }).join("");
+    h += '</div>' + (paid() ? '<button class="btn ghost" data-act="portal">Update card or cancel</button>' : "") + (paid() && S.license.key ? '<div class="panel"><div class="eyebrow">Your license key</div><div class="between"><b style="font-size:18px;letter-spacing:.06em" data-notr>' + esc(S.license.key) + '</b><button class="btn ghost sm" data-act="copykey">Copy</button></div><p class="small mute" style="margin:8px 0 0">Use it to unlock Liquara on your other devices.' + (S.license.email ? " We also emailed it to " + esc(S.license.email) + "." : "") + "</p></div>" : '<div class="panel"><div class="eyebrow">Have a license key?</div><div class="row" style="gap:8px"><input class="in" id="lic" placeholder="LQ-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" data-notr><button class="btn" data-act="lic">Unlock</button></div><p class="small mute" style="margin:8px 0 0">It\'s in the email we sent when your trial started.</p></div>');
     return h + foot();
   }
   function loadStripe() { return new Promise(function (ok, no) { if (window.Stripe) return ok(); var s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = function () { no(new Error("Couldn't load the secure payment form")); }; document.head.appendChild(s); }); }
   async function buy(plan) {
-    var per = ST.per || "month", box = document.getElementById("checkout");
+    var per = ST.per || "month", box = document.getElementById("co-" + plan) || document.getElementById("checkout");
+    document.querySelectorAll(".cobox").forEach(function (b) { if (b !== box) b.innerHTML = ""; });
     if (!helperReady() || !CFG.stripePk) { box.innerHTML = '<div class="panel note">Payments aren\'t switched on yet. Once the Stripe and helper setup is done, the secure card form opens right here.</div>'; box.scrollIntoView({ behavior: "smooth" }); return; }
     box.innerHTML = '<div class="panel"><span class="spin"></span></div>'; box.scrollIntoView({ behavior: "smooth" });
     try {
       await loadStripe(); S.device = S.device || uid() + uid(); saveS();
       var r = await helper("/checkout", { plan: plan, period: per, trialDays: TRIAL_DAYS, device: S.device, email: S.email || "" });
       var stripe = window.Stripe(CFG.stripePk); box.innerHTML = '<div class="panel" id="ckmount"></div>';
-      var co = await stripe.initEmbeddedCheckout({ clientSecret: r.clientSecret, onComplete: async function () { try { var L = await helper("/license", { session: r.session, device: S.device }); await setLicense(L.code); co.destroy(); render(); toast("Welcome to Liquara " + PLANS[plan].name); } catch (e) { toast("Paid, but unlocking failed: " + e.message + ". Use 'Have a license code?'"); } } });
+      var co = await stripe.initEmbeddedCheckout({ clientSecret: r.clientSecret, onComplete: async function () { try { var L = await helper("/license", { session: r.session, device: S.device }); await setLicense(L.code, L); co.destroy(); ST.gateMsg = null; render(); toast("Welcome to Liquara " + PLANS[plan].name + (L.emailed && L.email ? ". Your license key was emailed to " + L.email : "")); } catch (e) { toast("Paid, but unlocking failed: " + e.message + ". Use 'Have a license code?'"); } } });
       co.mount("#ckmount");
     } catch (e) { box.innerHTML = '<div class="panel note">' + esc(e.message) + "</div>"; }
   }
   /* license codes: LQ1.<payload>.<signature>, verified with the public key in license-pub.js */
-  async function setLicense(code) {
+  async function setLicense(code, info) {
     var P = window.LQ_LICENSE_PUB; if (!P) throw new Error("License checking isn't set up yet");
     var parts = String(code).trim().split("."); if (parts.length !== 3 || parts[0] !== "LQ1") throw new Error("That isn't a Liquara code");
     var dec = function (s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
@@ -900,7 +1127,21 @@
     if (!ok) throw new Error("That code isn't valid");
     var p = JSON.parse(new TextDecoder().decode(dec(parts[1])));
     if (p.e && p.e < Date.now()) throw new Error("That code has expired");
-    S.license = { code: code.trim(), plan: p.p, until: p.e || 8.64e15, firm: p.f }; saveS();
+    var old = S.license || {};
+    S.license = { code: code.trim(), plan: p.p, until: p.e || 8.64e15, firm: p.f, key: (info && info.key) || p.l || old.key || "", email: (info && info.email) || old.email || "", needs: info && info.needs !== undefined ? info.needs : old.needs || "", checked: Date.now() }; delete S.licMsg; saveS();
+  }
+  /* the server decides: renew on launch and every few hours; lock if it says no */
+  async function renewNow(force) {
+    if (!S.license || !helperReady()) return;
+    if (!force && S.license.checked && Date.now() - S.license.checked < 6 * 3600e3 && S.license.until - Date.now() > 864e5) return;
+    try { var r = await helper("/renew", { device: S.device, rev: S.demo ? undefined : fitRev(), cik: S.demo || !S.co || !S.co.cik ? undefined : S.co.cik }); await setLicense(r.code, r); S.license.needs = r.needs || ""; saveS(); }
+    catch (e) { if (e.code === "revoked" || e.code === "inactive" || e.code === "invalid" || e.code === "devices") { S.licMsg = e.message; delete S.license; saveS(); ST.gateMsg = e.message; render(); } }
+  }
+  async function activateKey(v) {
+    v = String(v || "").trim(); if (!v) throw new Error("Paste your license key");
+    if (/^LQ1\./.test(v)) { await setLicense(v); await renewNow(true); if (!S.license) throw new Error(S.licMsg || "That license isn't active"); return; }
+    if (!helperReady()) throw new Error("The Liquara helper isn't set up yet");
+    var r = await helper("/activate", { key: v, device: S.device }); await setLicense(r.code, r);
   }
 
   /* ---------- PIN lock ---------- */
@@ -979,7 +1220,26 @@
     if (d.scn) { ST.sc = Object.assign(defSc(), S.scenarios[+d.scn].sc); go("decide"); return; }
     if (d.scndel) { S.scenarios.splice(+d.scndel, 1); saveS(); render(); return; }
     var A_ = d.act;
-    if (A_ === "home") { var nat = false; try { nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (er) { } if (nat) { ST.tab = "pulse"; render(); window.scrollTo(0, 0); } else { try { sessionStorage.removeItem("lq_inapp"); } catch (er) { } location.href = "./"; } return; }
+    if (A_ === "copick") { pickCo(t.dataset.cik); return; }
+    if (A_ === "cofweb") { webCo(); return; }
+    if (A_ === "cowebpick") { pickWebCo(+t.dataset.i); return; }
+    if (A_ === "counlink") { delete S.co; saveS(); render(); return; }
+    if (A_ === "news") { getNews(!!(S.news && S.news.data)); return; }
+    if (A_ === "compete") { getCompete(); return; }
+    if (A_ === "csec") { ST.compSec = t.dataset.s; render(); return; }
+    if (A_ === "lgo2") { go(t.dataset.to); return; }
+    if (A_ === "upgrade") { doUpgrade(t.dataset.plan); return; }
+    if (A_ === "fitwrong") { location.href = "mailto:support@getliquara.com?subject=" + encodeURIComponent("My plan check looks wrong") + "&body=" + encodeURIComponent("License: " + (S.license && S.license.key || "") + "\nWhat Liquara sees: about " + m(fitRev()) + " a year\nWhat's actually right: "); return; }
+    if (A_ === "lgo") {
+      var to = t.dataset.to; ST.launch = false;
+      if (to === "lens") { S.lens = t.dataset.l; saveS(); }
+      if (to === "plans" || to === "key") { if (!ST.res) { render(); toast("Pick a size first, then choose your plan"); return; } go("plans"); if (to === "key") setTimeout(function () { var f = document.getElementById("lic"); if (f) { f.scrollIntoView({ behavior: "smooth", block: "center" }); f.focus(); } }, 120); return; }
+      if (to === "data") { go("data"); return; }
+      if (to === "news" || to === "compete") { if (!ST.res) { render(); toast("Pick a size first"); return; } go(to); return; }
+      if (!ST.res) { render(); return; }
+      go("home"); return;
+    }
+    if (A_ === "home") { var nat = false; try { nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (er) { } if (nat) { ST.launch = true; render(); window.scrollTo(0, 0); } else { try { sessionStorage.removeItem("lq_inapp"); } catch (er) { } location.href = "./"; } return; }
     if (A_ === "backdemo") { ST.gateMsg = null; ST.tab = "pulse"; render(); window.scrollTo(0, 0); return; }
     if (A_ === "theme") { S.theme = S.theme === "light" ? "dark" : "light"; saveS(); render(); return; }
     if (A_ === "tour") { startTour(); return; }
@@ -999,7 +1259,8 @@
     if (A_ === "budgetimport") { if (gate("Import your own budget once your free trial starts.")) return; budgetPicker.click(); return; }
     if (A_ === "addcost") { if (gate("Add your own costs once your free trial starts.")) return; var rows = parseTyped(document.getElementById("costin").value), fc = document.getElementById("costfc").checked; if (!rows.length) { toast("Add an amount, like: Uniforms 600 a month"); return; } S.costs = (S.costs || []).concat(rows.map(function (r) { return { id: uid(), vendor: r.vendor, amount: r.amount, every: r.every, forecast: fc }; })); if (!S.demo && !S.trial) S.trial = Date.now(); saveS(); await analyze(); render(); toast("Added " + rows.length + " cost" + (rows.length > 1 ? "s" : "")); return; }
     if (A_ === "portal") { try { var pr = await helper("/portal", { device: S.device }); var w = window.open(pr.url, "_blank"); if (!w) location.href = pr.url; } catch (er) { toast(er.message); } return; }
-    if (A_ === "lic") { try { await setLicense(document.getElementById("lic").value); toast("Unlocked"); render(); } catch (er) { toast(er.message); } return; }
+    if (A_ === "lic") { t.disabled = true; try { await activateKey(document.getElementById("lic").value); ST.gateMsg = null; toast("Unlocked"); render(); } catch (er) { toast(er.message); t.disabled = false; } return; }
+    if (A_ === "copykey") { try { await navigator.clipboard.writeText(S.license.key); toast("License key copied"); } catch (er) { toast(S.license.key); } return; }
     if (A_ === "unlock") { var pv = document.getElementById("pinin").value; if (await sha(S.pin.salt + pv) === S.pin.hash) { unlocked = true; render(); } else { toast("Wrong PIN"); buzz(); } return; }
     if (A_ === "forgotpin") { if (!confirmTwice(t)) return; await clearSrc(); S = {}; saveS(); location.reload(); return; }
     if (A_ === "setpin") { var p1 = document.getElementById("pin1").value; if (!/^\d{4,8}$/.test(p1)) { toast("Use 4 to 8 digits"); return; } var salt = uid(); S.pin = { salt: salt, hash: await sha(salt + p1) }; unlocked = true; saveS(); toast("PIN set"); render(); return; }
@@ -1028,7 +1289,7 @@
     else if (d.act === "api") { if (gate("Live connections unlock with your free trial.")) return; apiSheet("custom"); }
     else if (d.act === "sync") syncAll(false);
     else if (d.act === "demo") { delete S.budget; S.ccy = null; S.demo = d.id; delete S.company; saveS(); ST.qa = []; ST.sc = defSc(); scanAndShow("Demo: " + DEMO.get(d.id).name); }
-    else if (d.act === "saveset") { S.company = document.getElementById("sco").value.trim() || undefined; var bv = document.getElementById("sbal").value.replace(/[$,\s]/g, ""); S.balance = bv === "" ? undefined : +bv; S.industry = document.getElementById("sind").value; S.size = document.getElementById("ssz").value; S.ccy = document.getElementById("sccy").value; var hw = document.getElementById("shelper"); if (hw) S.helperUrl = hw.value.trim(); if (S.helperUrl) CFG.worker = S.helperUrl; saveS(); await analyze(); toast("Saved"); go("home"); }
+    else if (d.act === "saveset") { S.company = document.getElementById("sco").value.trim() || undefined; var bv = document.getElementById("sbal").value.replace(/[$,\s]/g, ""); S.balance = bv === "" ? undefined : +bv; S.industry = document.getElementById("sind").value; S.size = document.getElementById("ssz").value; S.ccy = document.getElementById("sccy").value; S.region = document.getElementById("sreg").value.trim() || undefined; var hw = document.getElementById("shelper"); if (hw) S.helperUrl = hw.value.trim(); if (S.helperUrl) CFG.worker = S.helperUrl; saveS(); await analyze(); toast("Saved"); go("home"); }
     else if (d.act === "wipe") { if (!confirmTwice(t)) return; await clearSrc(); S = {}; saveS(); ST.sources = []; ST.qa = []; ST.res = null; ST.model = null; render(); }
     else if (d.act === "savec") {
       if (gate("Live connections unlock with your free trial.")) return;
@@ -1055,6 +1316,7 @@
     saveS(); toast("Imported " + n + " months"); render();
   });
   document.addEventListener("input", function (e) {
+    if (e.target.id === "cofq") { cofSearch(e.target.value); return; }
     var k = e.target.dataset && e.target.dataset.sc; if (!k) return;
     ST.sc[k] = e.target.tagName === "SELECT" ? e.target.value : +e.target.value;
     var lb = document.querySelector('[data-lbl="' + k + '"]'); if (lb && FMT[k]) lb.textContent = FMT[k](ST.sc[k]);
@@ -1065,7 +1327,10 @@
   /* ---------- start ---------- */
   (async function start() {
     applyTheme(); if (S.helperUrl) CFG.worker = S.helperUrl; if (!S.device) { S.device = uid() + uid(); saveS(); }
-    if (S.license && helperReady() && S.license.until - Date.now() < 5 * 864e5) helper("/renew", {}).then(function (r) { return setLicense(r.code); }).catch(function () { });
+    ST.launch = isNative() || location.hash === "#launch";
+    renewNow(true);
+    setInterval(function () { renewNow(false); }, 3600e3);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) renewNow(false); });
     try { ST.sources = await allSrc(); } catch (e) { ST.sources = []; }
     if (!S.demo && !ST.sources.length && !(S.costs || []).length) { render(); return; }
     await analyze(); render();
