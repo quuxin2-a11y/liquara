@@ -65,7 +65,7 @@ Search the web for current pricing and return ONLY JSON:
 export default {
   async fetch(req, env) {
     const origin = env.APP_ORIGIN && req.headers.get("Origin") === env.APP_ORIGIN ? env.APP_ORIGIN : "*";
-    if (req.method === "OPTIONS") return J({}, 204, origin);
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "POST, GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Liquara-License, X-Liquara-Device, X-Liquara-Admin", "Access-Control-Max-Age": "86400", "Vary": "Origin" } });
     if (req.method !== "POST") return J({ ok: true, service: "Liquara helper" }, 200, origin);
     const path = new URL(req.url).pathname;
     let body = {}; try { body = await req.json(); } catch (e) { }
