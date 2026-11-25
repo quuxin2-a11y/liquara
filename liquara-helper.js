@@ -1,6 +1,6 @@
 /* Liquara helper: a Cloudflare Worker.
    Paste this whole file into a new Cloudflare Worker, then add these settings (Settings → Variables and Secrets):
-     STRIPE_SECRET        your Stripe secret key (sk_live_... or sk_test_...)              [secret]
+     STRIPE_SECRET        your Stripe secret key (sk_live_, rk_live_ or a test key)            [secret]
      LICENSE_KEY          the private key from getliquara.com/setup-keys                          [secret]
      ANTHROPIC_KEY        your Claude API key (for AI reading and the savings finder)      [secret]
      PRICES               JSON, e.g. {"owner_month":"price_...","owner_quarter":"price_...", ... "enterprise_year":"price_..."}
@@ -116,7 +116,7 @@ export default {
             customer: { id: c.id, email: c.email || "", name: c.name || "", phone: c.phone || "" } };
         });
         const sesOut = sessions.filter(s => s.mode === "subscription").map(s => ({ id: s.id, status: s.status, created: s.created, email: (s.customer_details && s.customer_details.email) || s.customer_email || "", name: (s.customer_details && s.customer_details.name) || "", amount: (s.amount_total || 0) / 100, currency: (s.currency || "usd").toUpperCase(), customer: typeof s.customer === "string" ? s.customer : s.customer && s.customer.id || null, subscription: typeof s.subscription === "string" ? s.subscription : s.subscription && s.subscription.id || null, plan: (s.metadata && s.metadata.plan) || "" }));
-        return J({ at: Date.now(), live: String(env.STRIPE_SECRET || "").startsWith("sk_live"), subscriptions: subOut, sessions: sesOut }, 200, origin);
+        return J({ at: Date.now(), live: /^(sk|rk)_live_/.test(String(env.STRIPE_SECRET || "")), subscriptions: subOut, sessions: sesOut }, 200, origin);
       }
       if (path === "/translate") {
         if (!req.headers.get("X-Liquara-Device") && !req.headers.get("X-Liquara-License")) return J({ error: "Unknown device" }, 401, origin);
