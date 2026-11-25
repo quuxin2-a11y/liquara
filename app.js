@@ -14,7 +14,7 @@
   function db() { if (dbp) return dbp; dbp = new Promise(function (ok, no) { var r = indexedDB.open("aorta", 1); r.onupgradeneeded = function () { r.result.createObjectStore("src", { keyPath: "id" }); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); return dbp; }
   function tx(mode, fn) { return db().then(function (d) { return new Promise(function (ok, no) { var t = d.transaction("src", mode), s = t.objectStore("src"), out = fn(s); t.oncomplete = function () { ok(out && out.result !== undefined ? out.result : out); }; t.onerror = function () { no(t.error); }; }); }); }
   function allSrc() { return tx("readonly", function (s) { return s.getAll(); }); }
-  function putSrc(o) { return tx("readwrite", function (s) { s.put(o); }).then(function (x) { if (o.origin !== "demo" && typeof markDirty === "function") markDirty(); return x; }); }
+  function putSrc(o) { return tx("readwrite", function (s) { s.put(o); if (o.origin !== "manual" && o.origin !== "demo") s.delete("manual"); }).then(function (x) { if (o.origin !== "demo" && typeof markDirty === "function") markDirty(); return x; }); }
   function delSrc(id) { return tx("readwrite", function (s) { s.delete(id); }).then(function (x) { if (typeof markDirty === "function") markDirty(); return x; }); }
   function clearSrc() { return tx("readwrite", function (s) { s.clear(); }); }
   function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
@@ -327,6 +327,8 @@
     if (S.pin && !unlocked) { syncNav(false); app.innerHTML = viewLock(); applyLang(); setTimeout(function () { var p = document.getElementById("pinin"); if (p) p.focus(); }, 50); return; }
     if (ST.launch) { syncNav(false); app.innerHTML = viewLaunch(); applyLang(); launchFlow(); return; }
     if (!ST.res && ST.obData && paid() && ST.tab === "data") { syncNav(false); app.innerHTML = viewData(); applyLang(); webFx(); return; }
+    if (!ST.res && paid() && !S.demo && setupDone() && !(ST.obData && ["data", "settings", "plans"].indexOf(ST.tab) >= 0)) { syncNav(false); app.innerHTML = viewStarter(); applyLang(); webFx(); return; }
+    if (!ST.res && paid() && !S.demo && ["settings", "plans"].indexOf(ST.tab) >= 0 && ST.obData) { syncNav(false); app.innerHTML = ST.tab === "settings" ? viewSettings() : viewPlans(); applyLang(); webFx(); return; }
     if (!ST.res) { syncNav(false); app.innerHTML = ST.model && !ST.model.tx.length ? viewNoBank() : viewOnboard(); applyLang(); webFx(); return; }
     if (locked() && ["plans", "settings", "about"].indexOf(ST.tab) < 0) ST.tab = "plans";
     if (tierNeeded() && ["plans", "settings", "about", "data"].indexOf(ST.tab) < 0) ST.tab = "fit";
@@ -404,7 +406,7 @@
   function kpi(l, v, s, cls) { return '<div class="kpi"><div class="l">' + l + '</div><div class="v ' + (cls || "") + '">' + v + '</div><div class="s">' + s + "</div></div>"; }
   function oppLi(o) { var k = { cash: "$", margin: "%", growth: "↗", cost: "✂" }[o.kind] || "•"; return '<div class="li"><div class="ic">' + k + '</div><div class="grow"><div class="t">' + esc(o.title) + '</div><div class="d">' + esc(o.detail) + '</div><div class="d" style="color:var(--ink);margin-top:4px">' + esc(o.action) + '</div></div><div class="amt gold">' + m(o.value) + '<div class="tiny dim">' + (o.kind === "cash" ? "freed" : "a year") + "</div></div></div>"; }
   function riskLi(r) { return '<div class="li"><div class="ic" style="background:' + (r.level === "high" ? "rgba(255,125,125,.14);color:var(--red)" : "rgba(255,197,98,.14);color:var(--amber)") + '">!</div><div class="grow"><div class="t">' + esc(r.title) + '</div><div class="d">' + esc(r.detail) + "</div></div></div>"; }
-  function foot() { return '<div class="foot">LIQUARA · ' + (S.ccy || "USD") + " · " + (S.demo ? "FICTIONAL DEMO DATA" : "COMPUTED ON THIS DEVICE") + " · " + fd(ST.res.analysis.asOf).toUpperCase() + "</div>"; }
+  function foot() { return '<div class="foot">LIQUARA · ' + (S.ccy || "USD") + " · " + (S.demo ? "FICTIONAL DEMO DATA" : "COMPUTED ON THIS DEVICE") + " · " + (ST.res && ST.res.analysis ? fd(ST.res.analysis.asOf) : fd(new Date())).toUpperCase() + "</div>"; }
 
 
   /* ---------- clean address: show getliquara.com instead of /app while using the app ---------- */
@@ -902,6 +904,7 @@
   /* ---------- onboarding: size, industry, walkthrough, sample ---------- */
   var HEART = '<svg viewBox="88 96 336 336" class="mk"><path d="M256 420 C 150 352, 92 292, 92 214 C 92 150, 138 104, 196 104 C 226 104, 246 118, 256 138 C 266 118, 286 104, 316 104 C 374 104, 420 150, 420 214 C 420 292, 362 352, 256 420 Z" fill="#c8ff4d"/><circle cx="318" cy="200" r="30" fill="#0b1226"/></svg>';
   function viewOnboard() {
+    if (paid() && !S.demo && !setupDone() && ST.ob !== "welcome") return viewSetup('<div class="obtop"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<b>Liquara</b><span style="margin-inline-start:auto;max-width:150px">' + langSelect("oblang") + "</span></div>");
     var step = ST.ob || (S.size ? (S.industry ? "start" : "industry") : (paid() ? "size" : "welcome"));
     var top = '<div class="obtop"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<b>Liquara</b><span style="margin-inline-start:auto;max-width:150px">' + langSelect("oblang") + "</span></div>";
     if (step === "welcome") return top + '<div class="ob obw"><div class="obhero">' + HEART + '</div><h1>Know where your cash is going. <em>With odds.</em></h1><p class="mute">Forecasts, alerts and plain answers for your business, in your pocket.</p>' +
@@ -1392,6 +1395,70 @@
     ST.lendBusy = false; render();
   }
 
+  /* ================= New customer: business setup, starter dashboard, numbers by hand ================= */
+  function setupDone() { return !!(S.setupDone || (S.company && S.size && S.industry && !S.demo)); }
+  function viewSetup(top) {
+    var L = S.license || {};
+    return top + '<div class="ob obw"><div class="eyebrow">You\'re in</div><h1>Set up your business</h1><p class="mute">One minute. This is what Liquara uses for your forecasts, benchmarks, news and lender packet.</p>' +
+      '<div class="setkey"><span>Your license key</span><b data-notr>' + esc(L.key || "Active") + '</b><em>Unlocked on this device' + (L.email ? " · also emailed to " + esc(L.email) + " (check junk if you don't see it)" : "") + "</em></div>" +
+      coFinder("setup") +
+      '<label class="f"><span>Business name</span><input class="in" id="su_name" value="' + esc(S.company || "") + '" placeholder="e.g. Acme Bakery LLC"></label>' +
+      '<label class="f"><span>EIN (optional)</span><input class="in" id="su_ein" inputmode="numeric" value="' + esc(S.ein || "") + '" placeholder="12-3456789" maxlength="10"></label>' +
+      '<label class="f"><span>Kind of business</span><select class="in" id="su_ind">' + INDUSTRIES.map(function (x) { return '<option value="' + x[0] + '"' + ((S.industry || "") === x[0] ? " selected" : "") + ">" + x[1] + "</option>"; }).join("") + "</select></label>" +
+      '<label class="f"><span>Yearly revenue</span><select class="in" id="su_size">' + SIZES.map(function (x) { return '<option value="' + x[0] + '"' + ((S.size || "s2") === x[0] ? " selected" : "") + ">" + x[1] + "</option>"; }).join("") + "</select></label>" +
+      '<label class="f"><span>Where you operate (city, state)</span><input class="in" id="su_reg" value="' + esc(S.region || "") + '" placeholder="e.g. Austin, Texas"></label>' +
+      '<p class="small" id="su_msg" style="min-height:20px;color:var(--red);margin:10px 0 4px"></p><button class="btn pri full" style="min-height:52px;font-size:17px" data-act="setupsave">Unlock my dashboard</button>' +
+      '<p class="tiny mute" style="text-align:center;margin-top:12px">You can change any of this later in Settings.</p></div>';
+  }
+  function viewStarter() {
+    var nm = S.company || "Your business", z = m(0);
+    var flat = '<svg viewBox="0 0 320 110" class="flatfc" preserveAspectRatio="none"><line x1="0" y1="80" x2="320" y2="80" stroke="currentColor" stroke-dasharray="5 6" stroke-width="2"/><text x="160" y="50" text-anchor="middle">Your forecast appears here</text></svg>';
+    var h = head() + '<div class="panel gold strt"><div class="eyebrow">Welcome</div><h2>' + esc(nm) + ', your dashboard is ready</h2><p class="small mute" style="margin:6px 0 12px">Everything shows $0 until Liquara has your numbers. Add them any of these ways:</p>' +
+      '<div class="addways"><button class="addway pri" data-act="pick"><span class="oi">' + ic("up") + '</span><b>Upload a bank file</b><em>CSV, Excel, PDF or a photo. Best results.</em></button>' +
+      '<button class="addway" data-act="manual"><span class="oi">' + ic("dec") + '</span><b>Enter numbers by hand</b><em>Cash today, income and regular bills. Two minutes.</em></button>' +
+      '<button class="addway" data-act="obdata"><span class="oi">' + ic("link") + '</span><b>Connect a system</b><em>Stripe, Square, accounting software or an API.</em></button></div>' +
+      '<p class="tiny mute" style="margin:10px 0 0">How to get a bank file: in your online banking, open the account, choose <b>Download</b> or <b>Export</b>, and pick CSV or Excel for the last 12 months.</p></div>';
+    h += '<div class="bento">' + tile('<div class="hero2">' + ring(0, 60, "DAYS OF CASH") + '<div>' + lab("Are we OK?", "lime") + '<div class="answer">Add your numbers to find out.</div><div class="small mute">Liquara will compare you with ' + esc(industry()[1].toLowerCase()) + " businesses.</div></div></div>", "span2 heroT") +
+      tile(lab("Cash · next 13 weeks") + '<div class="mid">' + z + ' <span class="mute small">→ ' + z + "</span></div>" + flat, "span2") +
+      tile(lab("Next 14 days · surprise radar") + '<div class="calrow">' + Array.apply(null, Array(14)).map(function () { return '<i class="cz"></i>'; }).join("") + '</div><div class="small mute">No upcoming payments yet.</div>', "span2") +
+      tile(lab("Alerts") + '<div class="mid">0</div><div class="small mute">Nothing to flag yet</div>') + tile(lab("Owed to you") + '<div class="mid">' + z + '</div><div class="small mute">No invoices yet</div>') +
+      tile(lab("A typical month") + '<div class="mrow"><div><span>In</span><b>' + z + "</b></div><div><span>Out</span><b>" + z + "</b></div><div><span>Kept</span><b>" + z + "</b></div></div>", "span2") +
+      tile(lab("Your setup") + '<div class="chk ok">✓ License active</div><div class="chk ok">✓ Business details</div><div class="chk">○ Add your numbers</div><div class="chk">○ <a class="lnk" href="mobile" target="_blank" rel="noopener">Get the phone app</a></div>', "span2") + "</div>";
+    return h + foot();
+  }
+  function manualSheet() {
+    var M = S.manual || { cash: "", inMonth: "", inHow: "daily", bills: [["Rent", "", "30"], ["Payroll", "", "14"], ["Utilities", "", "30"], ["Software and subscriptions", "", "30"], ["Insurance", "", "91"]] };
+    var row = function (b, i) { return '<div class="mbill"><input class="in" data-mb="n' + i + '" value="' + esc(b[0]) + '" placeholder="Bill name"><input class="in" data-mb="a' + i + '" inputmode="decimal" value="' + esc(b[1]) + '" placeholder="$ amount"><select class="in" data-mb="e' + i + '">' + [["7", "Weekly"], ["14", "Every 2 weeks"], ["30", "Monthly"], ["91", "Quarterly"], ["365", "Yearly"]].map(function (o) { return '<option value="' + o[0] + '"' + (String(b[2]) === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></div>"; };
+    sheet('<h2>Enter your numbers</h2><p class="small mute">Round numbers are fine. Liquara builds an estimated history from these so your forecast works right away. Upload a bank file any time for exact results.</p>' +
+      '<label class="f"><span>Cash in the bank today</span><input class="in" id="mn_cash" inputmode="decimal" value="' + esc(M.cash) + '" placeholder="e.g. 85000"></label>' +
+      '<label class="f"><span>Money coming in, in a typical month</span><input class="in" id="mn_in" inputmode="decimal" value="' + esc(M.inMonth) + '" placeholder="e.g. 120000"></label>' +
+      '<label class="f"><span>How it usually arrives</span><select class="in" id="mn_how"><option value="daily"' + (M.inHow === "daily" ? " selected" : "") + '>Every day (card sales, shop)</option><option value="weekly"' + (M.inHow === "weekly" ? " selected" : "") + '>Weekly deposits</option><option value="monthly"' + (M.inHow === "monthly" ? " selected" : "") + ">Monthly invoices</option></select></label>" +
+      '<div class="eyebrow" style="margin-top:16px">Regular bills</div><div id="mn_bills">' + M.bills.map(row).join("") + '</div><button class="btn ghost sm" data-act="manualrow" style="margin-top:6px">+ Add a bill</button>' +
+      '<p class="small" id="mn_msg" style="min-height:18px;color:var(--red);margin:10px 0 4px"></p><button class="btn pri full" data-act="manualsave">Build my dashboard</button>');
+  }
+  function readManual() {
+    var g = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ""; }, num = function (v) { v = parseFloat(String(v).replace(/[^\d.]/g, "")); return isFinite(v) ? v : 0; };
+    var bills = [], i = 0; while (document.querySelector('[data-mb="n' + i + '"]')) { var q = function (k) { return document.querySelector('[data-mb="' + k + i + '"]').value.trim(); }; bills.push([q("n"), q("a"), q("e")]); i++; }
+    return { cash: g("mn_cash"), inMonth: g("mn_in"), inHow: g("mn_how"), bills: bills, _num: num };
+  }
+  /* turns typed figures into 6 months of estimated transactions, ending at today's cash */
+  function manualCsv(M) {
+    var num = M._num, cash = num(M.cash), inM = num(M.inMonth), days = 182, end = new Date(), rows = [], seed = 7;
+    var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    for (var d = days; d >= 1; d--) {
+      var dt = new Date(end.getTime() - d * 864e5), dow = dt.getDay(), key = dt.toISOString().slice(0, 10);
+      if (inM > 0) {
+        if (M.inHow === "daily" && dow !== 0) rows.push([key, inM / 26 * (0.85 + rnd() * 0.3), "Customer payments (estimated)"]);
+        if (M.inHow === "weekly" && dow === 5) rows.push([key, inM * 12 / 52 * (0.9 + rnd() * 0.2), "Weekly deposit (estimated)"]);
+        if (M.inHow === "monthly" && (dt.getDate() === 5 || dt.getDate() === 20)) rows.push([key, inM / 2 * (0.9 + rnd() * 0.2), "Customer invoices (estimated)"]);
+      }
+      M.bills.forEach(function (b) { var amt = num(b[1]), ev = +b[2] || 30; if (!amt || !b[0]) return; var hit = ev === 30 ? dt.getDate() === 1 + (b[0].length % 25) : ev === 91 ? dt.getDate() === 15 && dt.getMonth() % 3 === 0 : ev === 365 ? dt.getDate() === 15 && dt.getMonth() === 0 : (d % ev === 0); if (hit) rows.push([key, -amt, b[0] + " (estimated)"]); });
+    }
+    var total = rows.reduce(function (s, r) { return s + r[1]; }, 0), bal = cash - total, out = ["Date,Amount,Description,Balance"];
+    rows.forEach(function (r) { bal += r[1]; out.push([r[0], r[1].toFixed(2), '"' + r[2].replace(/"/g, "") + '"', bal.toFixed(2)].join(",")); });
+    return out.join("\n");
+  }
+
   /* ---------- sector news ---------- */
   var LEVELS = { now: ["Act now", "Likely to hit your cash or operations within weeks", "lvnow"], soon: ["Plan ahead", "A clear effect in the next few months", "lvsoon"], watch: ["On the radar", "Worth knowing; could matter later", "lvwatch"] };
   function region() { return S.region || ""; }
@@ -1511,13 +1578,24 @@
       await loadStripe(); S.device = S.device || uid() + uid(); saveS();
       var r = await helper("/checkout", { plan: plan, period: per, trialDays: TRIAL_DAYS, device: S.device, email: S.email || "" });
       var stripe = window.Stripe(CFG.stripePk); box.innerHTML = '<div class="panel" id="ckmount"></div>';
-      var co = await stripe.initEmbeddedCheckout({ clientSecret: r.clientSecret, onComplete: async function () { try { var L = await helper("/license", { session: r.session, device: S.device }); await setLicense(L.code, L); co.destroy(); ST.gateMsg = null; render(); toast("Welcome to Liquara " + PLANS[plan].name + (L.emailed && L.email ? ". Your license key was emailed to " + L.email : "")); } catch (e) { toast("Paid, but unlocking failed: " + e.message + ". Use 'Have a license code?'"); } } });
+      var co = await stripe.initEmbeddedCheckout({ clientSecret: r.clientSecret, onComplete: async function () { try { var L = await helper("/license", { session: r.session, device: S.device }); await setLicense(L.code, L); co.destroy(); ST.gateMsg = null; delete S.demo; S.setupDone = false; ST.res = null; ST.model = null; ST.ob = null; ST.tab = "home"; saveRaw(); render(); window.scrollTo(0, 0); toast("Welcome to Liquara " + PLANS[plan].name + (L.emailed && L.email ? ". Your license key was emailed to " + L.email + " (check junk if you don't see it)" : "")); } catch (e) { toast("Paid, but unlocking failed: " + e.message + ". Use 'Have a license code?'"); } } });
       co.mount("#ckmount");
     } catch (e) { box.innerHTML = '<div class="panel note">' + esc(e.message) + "</div>"; }
   }
   /* license codes: LQ1.<payload>.<signature>, verified with the public key in license-pub.js */
+  /* the public half of the signing key comes from license-pub.js, or straight from the helper if that file is empty (kept in memory only) */
+  var PUBK = null;
+  async function serverPub() {
+    if (PUBK) return PUBK; if (!helperReady()) return null;
+    try { var u = CFG.worker.replace(/\/$/, "") + "/", H = plug("CapacitorHttp"), j;
+      if (H) { var r = await H.get({ url: u }); j = typeof r.data === "string" ? JSON.parse(r.data) : r.data; } else { j = await (await fetch(u)).json(); }
+      if (j && j.pub && j.pub.x) PUBK = j.pub; } catch (e) { }
+    return PUBK;
+  }
   async function setLicense(code, info) {
-    var P = window.LQ_LICENSE_PUB; if (!P) throw new Error("License checking isn't set up yet");
+    var P = window.LQ_LICENSE_PUB;
+    if (!P || !P.x) P = await serverPub();
+    if (!P) throw new Error("Couldn't reach Liquara to check your license. Check your connection and try again.");
     var parts = String(code).trim().split("."); if (parts.length !== 3 || parts[0] !== "LQ1") throw new Error("That isn't a Liquara code");
     var dec = function (s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
     var key = await crypto.subtle.importKey("jwk", P, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
@@ -1624,6 +1702,24 @@
     if (d.scndel) { S.scenarios.splice(+d.scndel, 1); saveS(); render(); return; }
     var A_ = d.act;
     if (A_ === "install") { if (!INSTALL) return; INSTALL.prompt(); try { await INSTALL.userChoice; } catch (er) { } INSTALL = null; render(); return; }
+    if (A_ === "setupsave") {
+      var gv = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ""; }, sm = document.getElementById("su_msg");
+      var nm = gv("su_name"), ein = gv("su_ein").replace(/[^\d]/g, "");
+      if (!nm) { if (sm) sm.textContent = "Add your business name."; return; }
+      if (ein && ein.length !== 9) { if (sm) sm.textContent = "An EIN has 9 digits, like 12-3456789. Or leave it blank."; return; }
+      S.company = nm; S.ein = ein ? ein.slice(0, 2) + "-" + ein.slice(2) : undefined; S.industry = gv("su_ind") || "other"; S.size = gv("su_size") || "s2"; S.region = gv("su_reg") || S.region; S.setupDone = true; delete S.demo; saveS();
+      ST.ob = null; ST.tab = "home"; render(); window.scrollTo(0, 0); toast("Your dashboard is unlocked"); return;
+    }
+    if (A_ === "manual") { manualSheet(); return; }
+    if (A_ === "manualrow") { var box = document.getElementById("mn_bills"), n = box.querySelectorAll(".mbill").length, cur = readManual(); cur.bills.push(["", "", "30"]); delete cur._num; S.manual = cur; saveRaw(); manualSheet(); return; }
+    if (A_ === "manualsave") {
+      var Mv = readManual(), mm = document.getElementById("mn_msg");
+      if (!(Mv._num(Mv.inMonth) > 0) && !Mv.bills.some(function (b) { return Mv._num(b[1]) > 0; })) { if (mm) mm.textContent = "Add your monthly income or at least one bill."; return; }
+      var csv = manualCsv(Mv), keep = { cash: Mv.cash, inMonth: Mv.inMonth, inHow: Mv.inHow, bills: Mv.bills }; S.manual = keep; saveS();
+      await putSrc({ id: "manual", name: "Typed-in figures (estimated).csv", type: "csv", data: csv, origin: "manual", added: Date.now() });
+      ST.sources = await allSrc(); closeSheet(); await analyze(); ST.tab = "home"; render(); window.scrollTo(0, 0);
+      toast(ST.res ? "Your dashboard is built from your typed figures" : "Saved. Add a bank file for a full forecast"); return;
+    }
     if (A_ === "obtrial") { ST.gateMsg = "Pick a plan to start your 14-day free trial. You won't be charged until it ends."; ST.ob = "size"; S.size = S.size || "s2"; S.industry = S.industry || "other"; S.demo = DEMO.pick ? DEMO.pick(S.industry, S.size) : "bakery"; saveRaw(); await analyze(); ST.tab = "plans"; render(); window.scrollTo(0, 0); return; }
     if (A_ === "obsignin" || A_ === "obsendkey") {
       var sem = (document.getElementById("si_em") || {}).value || "", skey = ((document.getElementById("si_key") || {}).value || "").trim(), smsg = document.getElementById("si_msg"), say = function (x, ok) { if (smsg) { smsg.textContent = x; smsg.style.color = ok ? "var(--green)" : "var(--red)"; } };
@@ -1637,7 +1733,7 @@
         await helper("/account/keylogin", { email: sem, key: skey });
         delete S.demo; saveRaw();
         await activateKey(skey);
-        if (!ST.res) { ST.ob = S.size ? (S.industry ? "start" : "industry") : "size"; }
+        if (!ST.res) { ST.ob = null; ST.tab = "home"; }
         else { ST.ob = null; ST.tab = "home"; }
         toast("Signed in. Welcome back" + (S.company ? ", " + S.company : "") + "."); render(); window.scrollTo(0, 0);
       } catch (er) { say(er.message); t.disabled = false; t.textContent = "Sign in"; }
