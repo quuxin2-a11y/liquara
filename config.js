@@ -1,5 +1,1 @@
-/* Liquara settings. Fill these in after setting up Stripe and the Cloudflare helper. */
-window.LQ_CONFIG = {
-  worker: "",      /* e.g. https://liquara-helper.yourname.workers.dev */
-  stripePk: ""     /* your Stripe publishable key, starts with pk_live_ or pk_test_ */
-};
+window.LQ_CONFIG = { worker: "https://liquara-helper.getliquara.workers.dev", stripePk: "pk_live_51UfVcWHjBqmxtTba7cWHzPv3d7ZgFCNFLHGlu1FnkU6Qg6fV6wLhOQgPS1tQkoMtRjLiGY3Mrrfa9FJF81O19tUG002dLQqrTS" };
