@@ -136,20 +136,120 @@
     var live = S.demo ? '<span class="badge">Demo</span>' : (S.conns && S.conns.length ? '<span class="live"><i></i>Live link</span>' : "");
     return '<div class="top"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<div style="min-width:0"><div class="nm">Liquara</div><div class="co">' + esc(sub || companyName()) + '</div></div><div class="sp"></div>' + live + '<button class="ib" data-act="theme" aria-label="Light or dark">' + (S.theme === "light" ? "☾" : "☀") + '</button><button class="ib" data-act="menu" aria-label="Menu">' + ic("menu") + "</button></div>";
   }
+  /* ================= Website wow layer (html.web only; the Android app never runs this) ================= */
+  var WEBFX = { tab: null, flow: false };
+  function isWeb() { return document.documentElement.classList.contains("web"); }
+  function calm() { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+  function webFlow() {
+    if (WEBFX.flow) return; WEBFX.flow = true;
+    var host = document.querySelector(".bgfx"); if (!host) return;
+    var cv = document.createElement("canvas"); cv.id = "webflow"; host.appendChild(cv);
+    var ctx = cv.getContext("2d"), W = 0, H = 0, dpr = Math.min(1.5, window.devicePixelRatio || 1), t = Math.random() * 50;
+    function size() { W = innerWidth; H = innerHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    function draw() {
+      ctx.clearRect(0, 0, W, H); ctx.globalCompositeOperation = "lighter";
+      var light = S.theme === "light", lines = W < 700 ? 14 : 20;
+      for (var r = 0; r < 2; r++) {
+        var baseY = H * (r ? 0.86 : 0.18), amp = H * (0.06 + r * 0.03), ph = r * 2.1;
+        for (var l = 0; l < lines; l++) {
+          var k = l / (lines - 1), off = (k - 0.5) * (W < 700 ? 60 : 110);
+          var a = (0.04 + 0.22 * Math.pow(1 - Math.abs(k - 0.5) * 2, 2)) * (light ? 0.9 : 1);
+          ctx.strokeStyle = light ? (r ? "rgba(11,138,99," + a + ")" : "rgba(110,150,0," + a + ")") : (r ? "rgba(46,230,176," + a * 0.85 + ")" : "rgba(200,255,77," + a + ")");
+          ctx.lineWidth = l === Math.floor(lines / 2) ? 1.4 : 0.7; ctx.beginPath();
+          for (var x = -40; x <= W + 40; x += 16) {
+            var u = x / W, y = baseY + off * (0.4 + 0.6 * Math.sin(u * 2.6 + t * 0.3 + ph)) + Math.sin(u * 3.8 + t * 0.5 + ph + k * 0.8) * amp + Math.cos(u * 8 + t * 0.8 + l * 0.15) * 5;
+            if (x === -40) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
+    function loop() { if (!document.hidden) { t += 0.008; draw(); } requestAnimationFrame(loop); }
+    size(); addEventListener("resize", function () { size(); draw(); });
+    if (calm()) draw(); else loop();
+    /* glow that follows the mouse across cards */
+    document.addEventListener("pointermove", function (e) {
+      if (e.pointerType !== "mouse") return;
+      var c = e.target.closest && e.target.closest(".tile, .panel, .kpi"); if (!c) return;
+      var r = c.getBoundingClientRect(); c.style.setProperty("--mx", (e.clientX - r.left) + "px"); c.style.setProperty("--my", (e.clientY - r.top) + "px");
+    }, { passive: true });
+    addEventListener("scroll", function () { document.documentElement.classList.toggle("scrolled", scrollY > 8); }, { passive: true });
+  }
+  function countUp(el) {
+    var txt = el.textContent, mt = /^([^\d\-]*)(-?)([\d,]*\.?\d+)([KMB%]?)(.*)$/.exec(txt.trim()); if (!mt) return;
+    var target = parseFloat(mt[3].replace(/,/g, "")); if (!isFinite(target) || target === 0) return;
+    var dec = (mt[3].split(".")[1] || "").length, comma = mt[3].indexOf(",") >= 0, t0 = performance.now(), dur = 900 + Math.min(500, target % 7 * 60);
+    function fmt(v) { var s = v.toFixed(dec); if (comma) s = Number(s).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec }); return mt[1] + mt[2] + s + mt[4] + mt[5]; }
+    (function step(now) { var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = fmt(target * e); if (p < 1 && el.isConnected) requestAnimationFrame(step); else el.textContent = txt; })(t0);
+  }
+  /* no holes: every grid row on the website is filled edge to edge */
+  function fillGrids() {
+    if (!isWeb()) return;
+    app.querySelectorAll(".bento, .kpis, .g3w, .rstrip, .three, .plans, .dgrid, .lmeta, .lcalc").forEach(function (g) {
+      var kids = Array.prototype.filter.call(g.children, function (c) { return c.offsetParent !== null || getComputedStyle(c).display !== "none"; }); if (kids.length < 2) return;
+      kids.forEach(function (c) { if (c.dataset.fill) { c.style.gridColumn = ""; delete c.dataset.fill; } });
+      if (!g.classList.contains("bento")) g.style.gridTemplateColumns = "";
+      var cols = getComputedStyle(g).gridTemplateColumns.split(" ").filter(Boolean).length; if (cols < 2) return;
+      if (!g.classList.contains("bento")) {
+        var n = kids.length; if (n <= cols) { g.style.gridTemplateColumns = "repeat(" + n + ", minmax(0, 1fr))"; return; }
+        for (var k = cols; k >= 2; k--) if (n % k === 0) { g.style.gridTemplateColumns = "repeat(" + k + ", minmax(0, 1fr))"; return; }
+      }
+      /* measure the real layout and widen the last card of any row that stops short */
+      var gs = getComputedStyle(g), gap = parseFloat(gs.columnGap) || 0;
+      if (getComputedStyle(g).position === "static") g.style.position = "relative";
+      for (var pass = 0; pass < 8; pass++) {
+        var GW = g.clientWidth - (parseFloat(gs.paddingLeft) || 0) - (parseFloat(gs.paddingRight) || 0), colW = (GW - gap * (cols - 1)) / cols, rows = {}, changed = false, pl = parseFloat(gs.paddingLeft) || 0;
+        kids.forEach(function (c) { if (!c.offsetWidth) return; (rows[c.offsetTop] = rows[c.offsetTop] || []).push(c); });
+        Object.keys(rows).map(Number).sort(function (x, y) { return x - y; }).some(function (key) {
+          var row = rows[key].sort(function (x, y) { return (x.offsetLeft + x.offsetWidth) - (y.offsetLeft + y.offsetWidth); }), last = row[row.length - 1], room = pl + GW - (last.offsetLeft + last.offsetWidth);
+          if (room > colW * 0.5) { var sp = Math.round((last.offsetWidth + gap) / (colW + gap)), add = Math.round((room + 0.5) / (colW + gap)); last.style.gridColumn = "span " + Math.min(cols, sp + add); last.dataset.fill = "1"; changed = true; return true; }
+          return false;
+        });
+        if (!changed) break;
+      }
+    });
+  }
+  /* two-column pages: long tables scroll inside their card so both columns end level */
+  function balanceCols() {
+    if (!isWeb()) return;
+    app.querySelectorAll(".wide2").forEach(function (w) {
+      var cols = Array.prototype.filter.call(w.children, function (c) { return c.offsetWidth; }); if (cols.length !== 2 || cols[0].offsetTop !== cols[1].offsetTop) { w.querySelectorAll(".tw").forEach(function (t) { t.style.maxHeight = ""; }); return; }
+      w.querySelectorAll(".tw").forEach(function (t) { t.style.maxHeight = "none"; }); w.style.alignItems = "start"; cols.forEach(function (c) { c.style.display = "block"; });
+      var nat = function (c) { return c.getBoundingClientRect().height; };
+      var h0 = nat(cols[0]), h1 = nat(cols[1]), tall = h0 > h1 ? cols[0] : cols[1], diff = Math.abs(h0 - h1), tw = tall.querySelector(".tw");
+      w.style.alignItems = ""; cols.forEach(function (c) { c.style.display = ""; });
+      if (tw && diff > 40) tw.style.maxHeight = Math.max(260, tw.scrollHeight - diff) + "px";
+    });
+  }
+  var fillT = 0; addEventListener("resize", function () { clearTimeout(fillT); fillT = setTimeout(function () { fillGrids(); balanceCols(); }, 150); });
+  function webFx() {
+    if (!isWeb()) return;
+    webFlow(); fillGrids(); balanceCols();
+    var key = (ST.res ? "app:" : "ob:") + ST.tab + ":" + (S.lens || "") + ":" + (ST.hz || "") + ":" + (ST.compSec || "") + ":" + (ST.ob || "") + ":" + !!S.demo; if (key === WEBFX.tab) return; WEBFX.tab = key;
+    if (calm()) return;
+    var cards = app.querySelectorAll(".tile, .panel, .kpi, .opt, .lcard, .cocard"), i = 0;
+    cards.forEach(function (c) { if (i > 24) return; c.style.setProperty("--d", (i++ * 55) + "ms"); c.classList.remove("fxin"); void c.offsetWidth; c.classList.add("fxin"); });
+    var nums = app.querySelectorAll(".big, .big2, .mid, .kpi .v, .ring .rv, .tile .num, .cbig span"); for (var n = 0; n < Math.min(14, nums.length); n++) countUp(nums[n]);
+    app.querySelectorAll("[data-chart] path, .chart path").forEach(function (p) {
+      var st = p.getAttribute("stroke"), fill = p.getAttribute("fill"); if (!st || st === "none" || (fill && fill !== "none") || (p.getAttribute("stroke-dasharray") || "0") !== "0") return;
+      try { var L = p.getTotalLength(); if (!L || L < 40) return; p.style.strokeDasharray = L; p.style.strokeDashoffset = L; p.getBoundingClientRect(); p.style.transition = "stroke-dashoffset 1.4s cubic-bezier(.2,.7,.2,1) .25s"; p.style.strokeDashoffset = "0"; setTimeout(function () { p.style.strokeDasharray = ""; p.style.strokeDashoffset = ""; p.style.transition = ""; }, 1800); } catch (e) { }
+    });
+  }
   function render() {
     ST.charts = {}; var ask = document.querySelector(".askbar"); if (ask) ask.remove();
     applyTheme();
     if (S.pin && !unlocked) { syncNav(false); app.innerHTML = viewLock(); applyLang(); setTimeout(function () { var p = document.getElementById("pinin"); if (p) p.focus(); }, 50); return; }
     if (ST.launch) { syncNav(false); app.innerHTML = viewLaunch(); applyLang(); launchFlow(); return; }
-    if (!ST.res) { syncNav(false); app.innerHTML = ST.model && !ST.model.tx.length ? viewNoBank() : viewOnboard(); applyLang(); return; }
+    if (!ST.res) { syncNav(false); app.innerHTML = ST.model && !ST.model.tx.length ? viewNoBank() : viewOnboard(); applyLang(); webFx(); return; }
     if (locked() && ["plans", "settings", "about"].indexOf(ST.tab) < 0) ST.tab = "plans";
     if (tierNeeded() && ["plans", "settings", "about", "data"].indexOf(ST.tab) < 0) ST.tab = "fit";
     syncNav(true);
-    var v = { home: viewPulse, alerts: viewAlerts, budget: viewBudget, actions: viewActions, goals: viewGoals, plans: viewPlans, savings: viewSavings, news: viewNews, compete: viewCompete, fit: viewFit, forecast: viewForecast, insights: viewInsights, decide: viewDecide, ask: viewAsk, data: viewData, settings: viewSettings, about: viewAbout }[ST.tab] || viewHome;
+    var v = { home: viewPulse, alerts: viewAlerts, budget: viewBudget, actions: viewActions, goals: viewGoals, plans: viewPlans, savings: viewSavings, news: viewNews, compete: viewCompete, loans: viewLoans, fit: viewFit, forecast: viewForecast, insights: viewInsights, decide: viewDecide, ask: viewAsk, data: viewData, settings: viewSettings, about: viewAbout }[ST.tab] || viewHome;
     app.innerHTML = v(); wireCharts();
     if (ST.tab === "ask") mountAsk();
     if (ST.tab === "decide") runDecision(true);
-    applyLang();
+    applyLang(); webFx();
   }
   function go(tab) { ST.tab = tab; render(); window.scrollTo(0, 0); }
 
@@ -393,7 +493,7 @@
   function viewDecide() {
     var A = ST.res.analysis, c = ST.sc, cats = A.spend.map(function (s) { return s.cat; }), mo = A.outMonth;
     var h = head() + '<div class="panel gold"><div class="eyebrow">Decision simulator</div><h2>Test a tough call before you make it</h2><p class="small mute" style="margin:6px 0 10px">Move anything below. Liquara reruns hundreds of futures with the change and compares them with doing nothing.</p><div class="chips">' + PRE.map(function (p, i) { return '<button class="chip" data-pre="' + i + '">' + p[0] + "</button>"; }).join("") + '<button class="chip" data-pre="reset">Reset</button></div></div>';
-    h += '<div class="wide2"><div><div class="panel"><div class="eyebrow">Result</div><div id="dres"><span class="spin"></span></div></div></div><div><div class="panel">';
+    h += '<div class="wide2"><div><div class="panel"><div class="eyebrow">Result</div><div id="dres"><span class="spin"></span></div></div></div><div><div class="panel sliders">';
     h += sl("pricePct", "Prices", c.pricePct, -20, 20, 1, function (v) { return (v > 0 ? "+" : "") + v + "%"; });
     h += sl("volumePct", "Sales volume", c.volumePct, -50, 50, 1, function (v) { return (v > 0 ? "+" : "") + v + "%"; });
     h += sl("hires", "New hires", c.hires, 0, 50, 1, function (v) { return v; });
@@ -566,7 +666,7 @@
   function sheet(html) { closeSheet(); var s = document.createElement("div"); s.className = "sheet"; s.id = "sheet"; s.innerHTML = '<div class="bd">' + html + "</div>"; s.addEventListener("click", function (e) { if (e.target === s || e.target.closest("[data-close]")) closeSheet(); }); document.body.appendChild(s); }
   function closeSheet() { var s = document.getElementById("sheet"); if (s) s.remove(); }
   function menu() {
-    var it = [["data", "data", "Data & connections"], ["news", "info", "Sector news"], ["compete", "ins", "Competitors & growth"], ["savings", "dec", "Savings finder"], ["alerts", "info", "Payment alerts"], ["budget", "ins", "Budget vs actual"], ["actions", "fc", "Action tracker"], ["goals", "home", "Cash goal"], ["pdf", "pdf", "Board pack (PDF)"], ["lender", "pdf", "Lender packet (PDF)"], ["xlsx", "up", "Excel export"], ["tour", "info", "Replay the walkthrough"], ["plans", "link", "Plan & billing"], ["settings", "gear", "Settings"], ["about", "info", "How it works & privacy"]];
+    var it = [["data", "data", "Data & connections"], ["news", "info", "Sector news"], ["compete", "ins", "Competitors & growth"], ["loans", "pdf", "Loans & borrowing"], ["savings", "dec", "Savings finder"], ["alerts", "info", "Payment alerts"], ["budget", "ins", "Budget vs actual"], ["actions", "fc", "Action tracker"], ["goals", "home", "Cash goal"], ["pdf", "pdf", "Board pack (PDF)"], ["lender", "pdf", "Lender packet (PDF)"], ["xlsx", "up", "Excel export"], ["tour", "info", "Replay the walkthrough"], ["plans", "link", "Plan & billing"], ["settings", "gear", "Settings"], ["about", "info", "How it works & privacy"]];
     sheet('<div class="between"><h2>Menu</h2><button class="ib" data-close>' + ic("x") + "</button></div>" + it.map(function (x) { return '<button class="opt" data-menu="' + x[0] + '"><div class="ic">' + ic(x[1]) + "</div><div><b>" + x[2] + "</b></div></button>"; }).join(""));
   }
 
@@ -782,6 +882,9 @@
     h += tile(lab("Owed to you") + '<b class="big2">' + m(A.arOpen) + '</b><div class="small ' + (A.arOverdue ? "neg" : "mute") + '">' + (A.arOverdue ? m(A.arOverdue) + " overdue" : "Nothing overdue") + "</div>");
     var top = A.opportunities[0];
     if (top) h += tile(lab("Best move", "dark") + '<b class="big2 dark">' + m(top.value) + '</b><div class="small dark">' + esc(top.title) + '</div><button class="chip darkchip" data-track="0">Track this</button>', "limeT span2");
+    { var dl = debts(), dpay = dl.reduce(function (s, d) { return s + monthlyPay(d); }, 0) || A.debtMonth || 0;
+      h += tile(lab("A typical month") + '<div class="mrow"><div><span>In</span><b class="pos">' + m(A.inMonth) + '</b></div><div><span>Out</span><b class="neg">' + m(A.outMonth) + '</b></div><div><span>Kept</span><b class="' + (A.netMonth >= 0 ? "pos" : "neg") + '">' + m(A.netMonth) + "</b></div></div>" +
+        '<div class="tiny mute" style="margin-top:6px">Last 3 months, averaged' + (dpay ? " · loan payments " + m(dpay) + '/mo · <button class="lnk" data-act="lgo2" data-to="loans">Loans</button>' : ' · <button class="lnk" data-act="lgo2" data-to="loans">What could I borrow?</button>') + "</div>", "span2 monthT"); }
     if (S.goal) { var g = goalTarget(), gd = E.goalDate(FC, g), prog = Math.max(0, Math.min(1, FC.start / g)); h += tile(lab("Goal · " + esc(goalLabel())) + '<div class="bar cy"><i style="width:' + Math.round(prog * 100) + '%"></i></div><div class="small">' + (FC.start >= g ? "<b class='pos'>Reached.</b>" : gd ? "Likely around <b>" + fd(gd.date) + "</b>" : "Not reached in the next 12 months on the current path.") + "</div>", "span2", 'data-go="goals" role="button"'); }
     return h + "</div>";
   }
@@ -811,7 +914,7 @@
     if (plan.length) h += tile(lab("On plan?") + '<b class="big2 ' + (on ? "pos" : "warn") + '">' + (on ? "On track" : "Off plan") + '</b><div class="small mute">Next 3 months, forecast vs budget</div>', "", 'data-go="budget" role="button"');
     var acts = (S.actions || []).filter(function (a) { return a.status !== "done"; }); h += tile(lab("Actions in progress") + '<b class="big2">' + acts.length + '</b><div class="small mute">' + (acts[0] ? esc(acts[0].title) : "Track a move to see results") + "</div>", "", 'data-go="actions" role="button"');
     h += tile(lab("Top risks") + (A.risks.length ? A.risks.slice(0, 3).map(function (r) { return '<div class="small" style="margin-top:6px"><span class="dot ' + (r.level === "high" ? "dr" : "da") + '"></span>' + esc(r.title) + "</div>"; }).join("") : '<div class="small mute">No major risks flagged.</div>'), "span2");
-    h += '<div class="span2 row" style="gap:8px;flex-wrap:wrap"><button class="btn pri" data-act="pdf">Board pack PDF</button><button class="btn" data-act="present">Present mode</button><button class="btn ghost" data-act="lender">Lender packet</button><button class="btn ghost" data-act="xlsx">Excel export</button></div>';
+    h += '<div class="tile span2">' + lab("Share with your board") + '<div class="small mute" style="margin:2px 0 10px">One-page brief, live slides, a lender-ready packet or the full numbers.</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn pri" data-act="pdf">Board pack PDF</button><button class="btn" data-act="present">Present mode</button><button class="btn ghost" data-act="lender">Lender packet</button><button class="btn ghost" data-act="xlsx">Excel export</button></div></div>';
     return h + "</div>";
   }
 
@@ -992,6 +1095,203 @@
     var ind = INDUSTRIES.filter(function (k) { return x.industry && new RegExp(k[1].split(/[ ,]/)[0], "i").test(x.industry); })[0];
     applyCo({ name: x.name, sector: x.industry || "", city: x.city || "", state: x.state || "", website: x.website || "", revenue: +x.revenue || 0, ind: ind ? ind[0] : S.industry, tickers: x.ticker ? [x.ticker] : [], listed: !!x.listed, source: "Web search" + (x.revenueNote ? " · revenue: " + x.revenueNote : "") });
     toast("Filled in " + x.name); render();
+  }
+
+  /* ================= Loans & borrowing ================= */
+  var LOAN_TYPES = { term: "Term loan", sba: "SBA loan", loc: "Line of credit", equipment: "Equipment loan", vehicle: "Vehicle loan", mortgage: "Real estate loan", card: "Business credit card", mca: "Cash advance", other: "Other" };
+  var LOAN_MKT = { term: "bankTerm", sba: "sba7a", loc: "loc", equipment: "equipment", vehicle: "equipment", mortgage: "sba504", mca: "mca" };
+  var LPROD = [
+    ["sbaMicro", "SBA microloan", "Small needs: equipment, inventory, working capital", 50000, 6, "2–6 weeks", "Some collateral and a personal guarantee", ["s1", "s2"], "about Prime + 4–8%", 4],
+    ["sba7a", "SBA 7(a) loan", "Almost anything: working capital, buying a business, refinancing", 5e6, 10, "1–3 months", "Personal guarantee from 20%+ owners; collateral if available", ["s1", "s2", "s3"], "Prime + up to 3–6.5% (SBA caps it; smaller loans can cost more)", 3],
+    ["sba504", "SBA 504 loan", "Buying a building or big equipment, fixed rate", 5.5e6, 20, "2–3 months", "The property itself, about 10% down", ["s2", "s3"], "fixed, tied to the 10-year Treasury", 1.5],
+    ["bankTerm", "Bank term loan", "A set amount repaid monthly over a few years", 0, 5, "2–6 weeks", "Business assets, often a personal guarantee", ["s2", "s3", "s4"], "about Prime + 1–4%", 2],
+    ["loc", "Line of credit", "Covering cash gaps; you pay interest only on what you use", -1, 1, "1–4 weeks", "Receivables and inventory, or unsecured for small lines", ["s1", "s2", "s3", "s4"], "about Prime + 1–8%", 3],
+    ["equipment", "Equipment financing", "Vehicles, machines, kitchen gear: the equipment is the collateral", 0, 5, "a few days", "The equipment", ["s1", "s2", "s3", "s4"], "about 6–20% depending on credit", 3],
+    ["invoice", "Invoice financing", "Cash now for invoices customers haven't paid yet", -2, 0.25, "a few days", "Your unpaid invoices", ["s1", "s2", "s3"], "about 1–5% of the invoice per month", 0],
+    ["rbf", "Revenue-based financing", "Repaid as a share of monthly sales", -3, 1, "a few days", "Future sales", ["s1", "s2", "s3"], "costly: often 20–50%+ a year", 0],
+    ["mca", "Merchant cash advance", "Last resort only: the most expensive option", -3, 0.75, "1–2 days", "Future card sales", ["s1", "s2"], "very costly: often 40–150%+ a year", 0],
+    ["abl", "Asset-based loan", "A large line backed by receivables and inventory", -4, 3, "4–8 weeks", "Receivables, inventory, equipment", ["s3", "s4", "s5"], "about SOFR + 1.5–4%", 2],
+    ["revolver", "Revolving credit facility", "A big company's standing credit line from a bank group", -5, 5, "1–3 months", "Usually company-wide, with covenants", ["s4", "s5"], "about SOFR + 1–2.5%", 1.5],
+    ["privateCredit", "Private credit", "Growth, buying companies or refinancing beyond what banks will do", 0, 6, "4–10 weeks", "Company-wide, tighter covenants", ["s3", "s4", "s5"], "about SOFR + 5–8%", 6]
+  ];
+  function bench(name) { var R = S.rates && S.rates.data, b = R && (R.benchmarks || []).filter(function (x) { return x.name && x.name.toLowerCase().indexOf(name) === 0; })[0]; var v = b && parseFloat(String(b.value).replace(/[^\d.]/g, "")); return isFinite(v) && v > 0 ? v : null; }
+  function prime() { return bench("prime") || 7.5; }
+  function sofr() { return bench("sofr") || 4.3; }
+  function mktRate(id) {
+    var R = S.rates && S.rates.data, p = R && R.products && R.products[id], nums = p && String(p.rate || "").match(/\d+(\.\d+)?/g);
+    if (nums && nums.length) { var ns = nums.map(Number).filter(function (n) { return n > 0.5 && n < 60; }); if (ns.length) return ns.length > 1 ? (ns[0] + ns[1]) / 2 : ns[0]; }
+    var P = LPROD.filter(function (x) { return x[0] === id; })[0]; if (!P) return prime() + 3;
+    if (id === "sba504") return (bench("10-year") || 4.4) + 1.5; if (["abl", "revolver", "privateCredit"].indexOf(id) >= 0) return sofr() + P[9];
+    if (id === "rbf") return 30; if (id === "mca") return 60; if (id === "invoice") return 24; if (id === "equipment") return prime() + 2;
+    return prime() + P[9];
+  }
+  function my(d) { return d.toLocaleDateString(langLoc(), { month: "short", year: "numeric" }); }
+  function pmtM(amount, apr, years) { var r = apr / 1200, n = Math.max(1, Math.round(years * 12)); return r ? amount * r / (1 - Math.pow(1 + r, -n)) : amount / n; }
+  function pvM(pay, apr, years) { var r = apr / 1200, n = Math.max(1, Math.round(years * 12)); return r ? pay * (1 - Math.pow(1 + r, -n)) / r : pay * n; }
+  function loanRec() { return ((ST.res && ST.res.fit && ST.res.fit.rec) || []).filter(function (r) { return r.dir === "-" && r.cat === "Loans & interest"; }); }
+  function debts() {
+    var saved = S.debts || [], seen = {}; saved.forEach(function (d) { if (d.key) seen[d.key] = 1; });
+    var found = loanRec().filter(function (r) { return !seen[r.key] && !(S.debtHide || []).some(function (k) { return k === r.key; }); }).map(function (r) { return { id: "r:" + r.key, key: r.key, name: r.party || r.key, payment: Math.abs(r.amount), every: r.period || 30.4, found: true }; });
+    return saved.concat(found);
+  }
+  function monthlyPay(d) { return (+d.payment || 0) * 30.4 / (+d.every || 30.4); }
+  function payoff(d) {
+    var B = +d.balance || 0, P = monthlyPay(d), r = (+d.rate || 0) / 1200;
+    if (!B || !P) return null; if (d.type === "loc" || d.type === "card") { if (P <= B * r) return { never: true }; }
+    if (r && P <= B * r) return { never: true };
+    var n = r ? -Math.log(1 - r * B / P) / Math.log(1 + r) : B / P; n = Math.ceil(n);
+    var end = new Date(); end.setMonth(end.getMonth() + n);
+    return { months: n, interest: Math.max(0, n * P - B), end: end };
+  }
+  function debtPlan(extra) {
+    var L = debts().filter(function (d) { return +d.balance > 0 && monthlyPay(d) > 0; }).map(function (d) { return { b: +d.balance, r: (+d.rate || 0) / 1200, p: monthlyPay(d), id: d.id }; });
+    if (!L.length) return null;
+    function run(x) {
+      var bs = L.map(function (d) { return d.b; }), m = 0, int = 0, freed = 0;
+      while (bs.some(function (b) { return b > 0.5; }) && m < 600) {
+        m++; var pool = x + freed; freed = 0;
+        var order = L.map(function (d, i) { return i; }).filter(function (i) { return bs[i] > 0.5; }).sort(function (a, b) { return L[b].r - L[a].r; });
+        L.forEach(function (d, i) { if (bs[i] <= 0.5) return; var it = bs[i] * d.r; int += it; bs[i] += it; var pay = Math.min(bs[i], d.p); bs[i] -= pay; if (bs[i] <= 0.5) freed += d.p - pay; });
+        pool += 0; order.forEach(function (i) { if (pool <= 0 || bs[i] <= 0.5) return; var pay = Math.min(bs[i], pool); bs[i] -= pay; pool -= pay; });
+        L.forEach(function (d, i) { if (bs[i] <= 0.5 && !d.done) { d.done = m; } });
+      }
+      L.forEach(function (d) { delete d.done; });
+      return { months: m, interest: int, stuck: m >= 600 };
+    }
+    var base = run(0), plan = run(extra || 0);
+    return { base: base, plan: plan };
+  }
+  function lendScore() {
+    var A = ST.res.analysis, M = ST.model, items = [], score = 0;
+    var cfads = A.netMonth + (A.debtMonth || 0), dm = (A.debtMonth || 0) + 0, dscr = dm > 0 ? cfads / dm : null;
+    function add(ok, pts, good, fix) { items.push([ok, good, fix]); if (ok) score += pts; }
+    add(cfads > 0 && (dscr == null || dscr >= 1.25), 30, dscr == null ? "Cash left over each month with no loan payments yet" : "Debt coverage " + dscr.toFixed(2) + "x (lenders want 1.25x+)", cfads <= 0 ? "More going out than coming in over 3 months. Fix that first; it's the #1 thing lenders check" : "Debt coverage " + (dscr || 0).toFixed(2) + "x is under the 1.25x lenders want");
+    var span = M && M.tx.length ? (M.tx[M.tx.length - 1].k - M.tx[0].k) / 30.4 : 0;
+    add(span >= 23, 15, "About " + Math.round(span / 12 * 10) / 10 + " years of history on file", "Lenders want 2 years of records; you've loaded about " + Math.max(1, Math.round(span)) + " months. Add older bank files");
+    add(A.cushionDays != null && A.cushionDays >= 45, 15, Math.round(A.cushionDays || 0) + " days of cash on hand", "Only " + Math.round(A.cushionDays || 0) + " days of cash on hand; 45+ looks much safer to a lender");
+    add(A.growth == null || A.growth >= -0.05, 15, A.growth == null ? "Sales look steady" : "Sales " + (A.growth >= 0 ? "up " : "down ") + Math.abs(Math.round(A.growth * 100)) + "% on last year", "Sales fell " + Math.round(-A.growth * 100) + "% on last year; have a short explanation ready");
+    var dtr = A.inMonth > 0 ? debts().reduce(function (s, d) { return s + (+d.balance || 0); }, 0) / (A.inMonth * 12) : 0;
+    add(dtr < 0.35, 10, "Existing debt is " + Math.round(dtr * 100) + "% of a year's sales", "Existing debt is " + Math.round(dtr * 100) + "% of a year's sales; lenders get cautious past about 35%");
+    add(!A.dso || A.dso <= 45, 15, A.dso ? "Customers pay in about " + Math.round(A.dso) + " days" : "No slow-paying customers found", "Customers take " + Math.round(A.dso) + " days to pay; collecting faster raises what you can borrow");
+    return { score: score, items: items, dscr: dscr, cfads: cfads };
+  }
+  function viewLoans() {
+    var A = ST.res.analysis, R = S.rates && S.rates.data, busy = ST.ratesBusy, sz = S.size || "s2", L = lendScore(), DL = debts();
+    var rev = (A.inMonth || 0) * 12, existing = DL.reduce(function (s, d) { return s + monthlyPay(d); }, 0) || A.debtMonth || 0, room = Math.max(0, L.cfads / 1.25 - existing);
+    var owed = DL.reduce(function (s, d) { return s + (+d.balance || 0); }, 0), lev = Math.max(0, L.cfads * 12 * 3 - owed); /* lenders rarely let total debt pass ~3x a year's cash flow */
+    var h = head() + '<div class="panel gold"><div class="eyebrow">Loans & borrowing</div><h2>What you owe, what you could borrow, and what it would cost</h2><p class="small mute" style="margin:6px 0 0">Built from your own cash flow and today\'s rates. Estimates, not loan offers.</p></div>';
+
+    /* ---- current debt ---- */
+    var tot = DL.reduce(function (s, d) { return s + (+d.balance || 0); }, 0), wr = 0, wb = 0, intLeft = 0, missing = 0;
+    DL.forEach(function (d) { if (+d.balance && +d.rate) { wr += d.balance * d.rate; wb += +d.balance; } var po = payoff(d); if (po && po.interest) intLeft += po.interest; if (!d.balance || !d.rate) missing++; });
+    h += '<div class="panel"><div class="eyebrow">Your current debt</div>';
+    if (!DL.length) h += '<p class="small mute">No loan payments found in your data yet. Add any loans, lines of credit or cards your business pays.</p>';
+    else {
+      h += '<div class="kpis">' + kpi("Owed in total", tot ? m(tot) : "–", tot ? DL.length + " " + (DL.length === 1 ? "loan" : "loans") : "add balances") + kpi("Paid each month", m(existing), "all loans") + kpi("Average rate", wb ? (wr / wb).toFixed(1) + "%" : "–", wb ? "weighted by balance" : "add rates") + kpi("Interest left", intLeft ? m(intLeft) : "–", "if paid as scheduled") + "</div>";
+      h += '<div class="dlist">' + DL.map(function (d, i) {
+        var po = payoff(d), mk = LOAN_MKT[d.type || "term"], mr = mk ? mktRate(mk) : null, refi = "";
+        if (po && !po.never && d.rate && mr && d.rate > mr + 1.5 && po.months > 6 && d.type !== "mca") { var np = pmtM(+d.balance, mr, po.months / 12), save = monthlyPay(d) - np; if (save > 20) refi = '<div class="nwm mv"><span>Refinance check</span>Today\'s typical rate for this kind of loan is about ' + mr.toFixed(1) + "%. Refinancing could save about <b>" + m(save) + "/month</b> (" + m(save * po.months) + " total). Ask about fees first.</div>"; }
+        return '<div class="dcard"><div class="between"><div class="grow"><b>' + esc(d.name) + "</b>" + (d.found ? ' <span class="chip">found in your bank data</span>' : "") + '<div class="tiny mute">' + esc([LOAN_TYPES[d.type] || (d.found ? "Loan payment" : ""), d.lender].filter(Boolean).join(" · ")) + '</div></div><div class="amt neg">' + m(monthlyPay(d)) + '<span class="tiny mute">/mo</span></div></div>' +
+          '<div class="dgrid"><div><span>Balance</span><b>' + (d.balance ? m(+d.balance) : "?") + "</b></div><div><span>Rate</span><b>" + (d.rate ? (+d.rate).toFixed(2) + "%" : "?") + "</b></div><div><span>Paid off</span><b>" + (po ? po.never ? "never at this payment" : my(po.end) : d.end ? esc(d.end) : "?") + "</b></div><div><span>Interest left</span><b>" + (po && po.interest ? m(po.interest) : "?") + "</b></div></div>" +
+          (d.limit && d.type === "loc" ? '<div class="bar"><i style="width:' + Math.min(100, (+d.balance || 0) / d.limit * 100) + '%"></i></div><div class="tiny mute">' + m(+d.balance || 0) + " used of " + m(+d.limit) + " · " + m(Math.max(0, d.limit - (d.balance || 0))) + " available</div>" : "") +
+          (po && po.never ? '<div class="nwm" style="--lv:#ff6b6b"><span>Heads up</span>This payment barely covers the interest, so the balance won\'t go down. Pay more or refinance.</div>' : "") + refi +
+          '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost sm" data-act="debtedit" data-i="' + esc(d.id) + '">' + (d.found || !d.balance ? "Add details" : "Edit") + "</button>" + (d.found ? '<button class="btn ghost sm" data-act="debthide" data-k="' + esc(d.key) + '">Not a loan</button>' : "") + "</div></div>";
+      }).join("") + "</div>";
+      if (missing) h += '<p class="tiny mute">Add balance and rate to each loan to see payoff dates, interest left and refinance savings.</p>';
+    }
+    h += '<button class="btn ghost full" data-act="debtedit" data-i="new" style="margin-top:8px">+ Add a loan, line or card</button></div>';
+
+    /* ---- payoff planner ---- */
+    var plan = debtPlan(ST.extra || 0);
+    if (plan) h += '<div class="panel"><div class="eyebrow">Pay it off faster</div><p class="small mute" style="margin:0 0 8px">Extra money each month goes to the highest-rate debt first (the cheapest way to get out of debt).</p><label class="f"><span>Extra each month: <b id="ppv">' + m(ST.extra || 0) + '</b></span><input type="range" class="slider" id="pp_extra" min="0" max="' + Math.max(500, Math.round(existing * 2 / 100) * 100) + '" step="50" value="' + (ST.extra || 0) + '"></label><div id="ppout">' + planOut(plan) + "</div></div>";
+
+    /* ---- borrowing power ---- */
+    h += '<div class="panel"><div class="eyebrow">What you could likely borrow</div>';
+    if (L.cfads <= 0) h += '<p class="small">Over the last 3 months more cash went out than came in, so most lenders would say no to a regular loan right now. Better routes: ' + (A.arOpen > 0 ? "invoice financing against the " + m(A.arOpen) + " customers owe you, " : "") + "an SBA microloan, or improving cash flow first (try the Savings finder).</p>";
+    else {
+      var cap5 = Math.min(lev, pvM(room, mktRate("bankTerm"), 5)), cap10 = Math.min(lev, pvM(room, mktRate("sba7a"), 10));
+      var lo5 = Math.round(cap5 / 1000) * 1000, hi10 = Math.round(Math.min(cap10, 5e6) / 1000) * 1000;
+      h += '<div class="lbig">' + (hi10 - lo5 > lo5 * 0.05 ? "<span>" + m(lo5) + "</span><em>to</em><span>" + m(hi10) + "</span>" : "<em>up to</em><span>" + m(hi10) + "</span>") + '</div><p class="small mute" style="margin:4px 0 10px">' + (hi10 - lo5 > lo5 * 0.05 ? "A 5-year bank loan up to a 10-year SBA loan. " : "") + 'Based on ' + m(L.cfads) + " a month of cash available to repay, keeping the 1.25x coverage lenders require and total debt under about 3x a year's cash flow" + (existing ? ", after your current " + m(existing) + "/month in payments" : "") + ".</p>";
+      h += '<div class="kpis">' + kpi("Room for new payments", m(room) + "/mo", "at 1.25x coverage") + kpi("Line of credit", "~" + m(Math.round(rev * 0.1 / 1000) * 1000), "about 10% of yearly sales") + (A.arOpen > 0 ? kpi("Against invoices", "~" + m(A.arOpen * 0.85), "85% of what's owed to you") : "") + kpi("Debt coverage", L.dscr ? L.dscr.toFixed(2) + "x" : "no debt", "1.25x+ is the bar") + "</div>";
+    }
+    h += "</div>";
+
+    /* ---- lender-ready score ---- */
+    h += '<div class="panel"><div class="between"><div class="eyebrow" style="flex:1">Lender-ready score</div></div><div class="lscore"><div class="lring" style="--p:' + L.score + '"><b>' + L.score + "</b><span>of 100</span></div><div class=\"grow\">" + L.items.map(function (x) { return '<div class="lchk ' + (x[0] ? "ok" : "no") + '"><i>' + (x[0] ? "✓" : "!") + "</i>" + esc(x[0] ? x[1] : x[2]) + "</div>"; }).join("") + "</div></div></div>";
+
+    /* ---- today's rates ---- */
+    h += '<div class="panel"><div class="eyebrow">Today\'s rates</div>';
+    if (R) h += '<div class="rstrip">' + (R.benchmarks || []).map(function (b) { return '<div><span>' + esc(b.name) + "</span><b>" + esc(String(b.value)) + (/%/.test(String(b.value)) ? "" : "%") + "</b>" + (b.url ? '<a href="' + esc(b.url) + '" target="_blank" rel="noopener">' + esc(b.source || "source") + " ↗</a>" : '<em>' + esc(b.source || "") + "</em>") + "</div>"; }).join("") + "</div>" + (R.takeaway ? '<p class="small" style="margin:10px 0 0">' + esc(R.takeaway) + "</p>" : "") + '<p class="tiny mute">As of ' + esc(R.asOf || "") + ". Checked " + esc(new Date(R.checked || Date.now()).toLocaleString()) + ".</p>";
+    else h += '<p class="small mute">' + (busy ? '<span class="spin"></span> Looking up today\'s prime rate, SOFR and loan rates…' : helperReady() ? "Tap to look up today's prime rate, SOFR, Treasury and typical loan rates." : "Live rates turn on once the Liquara helper is connected. Below are typical ranges.") + "</p>";
+    if (helperReady() && !busy) h += '<button class="btn ghost sm" data-act="rates">' + (R ? "Refresh rates" : "Get today's rates") + "</button>";
+    h += "</div>";
+
+    /* ---- loan options ---- */
+    var prods = LPROD.filter(function (p) { return p[7].indexOf(sz) >= 0; });
+    h += '<div class="panel"><div class="eyebrow">Loan options for a business your size</div>' + prods.map(function (p) {
+      var live = R && R.products && R.products[p[0]], rate = live && live.rate ? live.rate : p[8], r = mktRate(p[0]), amt = "";
+      if (p[3] > 0 || p[3] === 0) { var c = L.cfads > 0 ? Math.min(lev, pvM(room, r, p[4])) : 0; if (p[3] > 0) c = Math.min(c, p[3]); amt = c > 1000 ? "up to ~" + m(Math.round(c / 1000) * 1000) + " for you" : p[3] > 0 ? "up to " + m(p[3]) : ""; }
+      if (p[3] === -1) amt = "~" + m(Math.round(rev * 0.1 / 1000) * 1000) + " line for you"; if (p[3] === -2) amt = A.arOpen > 0 ? "~" + m(A.arOpen * 0.85) + " against today's invoices" : "needs unpaid invoices"; if (p[3] === -3) amt = "usually 1–2 months of sales";
+      var fit = p[0] === "mca" ? ["Avoid if you can", "ch"] : p[0] === "rbf" ? ["Costly", "cm"] : p[3] === -2 && !(A.arOpen > 0) ? ["Not for you yet", "cm"] : L.cfads <= 0 && ["bankTerm", "sba7a", "sba504", "privateCredit", "revolver"].indexOf(p[0]) >= 0 ? ["Hard right now", "cm"] : ["Good fit", "cl"];
+      return '<div class="lprod"><div class="between"><b>' + esc(p[1]) + '</b><span class="ctag ' + fit[1] + '">' + fit[0] + '</span></div><div class="small">' + esc(p[2]) + '</div><div class="lmeta"><div><span>Rate</span>' + esc(rate) + "</div><div><span>Amount</span>" + esc(amt || "varies") + "</div><div><span>Repay over</span>" + (p[4] < 1 ? "weeks to months" : p[0] === "loc" ? "1 yr, renews" : p[4] + " yrs") + "</div><div><span>Speed</span>" + esc(p[5]) + "</div><div><span>Backed by</span>" + esc(p[6]) + "</div></div>" + (live && live.url ? '<a class="tiny" href="' + esc(live.url) + '" target="_blank" rel="noopener">Rate source ↗</a>' : "") + "</div>";
+    }).join("") + "</div>";
+
+    /* ---- calculator ---- */
+    var c0 = ST.calc || { amt: Math.max(10000, Math.round(Math.min(L.cfads > 0 ? Math.min(lev, pvM(room, mktRate("bankTerm"), 5)) : 50000, 2e6) / 5000) * 5000), rate: Math.round(mktRate("bankTerm") * 4) / 4, yrs: 5 }; ST.calc = c0;
+    h += '<div class="panel gold"><div class="eyebrow">Try a loan</div><div class="lcalc"><label class="f"><span>Amount</span><input class="in" id="lc_amt" inputmode="numeric" value="' + c0.amt + '"></label><label class="f"><span>Rate %</span><input class="in" id="lc_rate" inputmode="decimal" value="' + c0.rate + '"></label><label class="f"><span>Years</span><input class="in" id="lc_yrs" inputmode="decimal" value="' + c0.yrs + '"></label></div><div id="lcout">' + calcOut() + '</div><button class="btn ghost full" data-act="lgo2" data-to="decide" style="margin-top:8px">See it in your forecast (Decide)</button></div>';
+
+    /* ---- what lenders ask for ---- */
+    var docs = [["13-week cash forecast", true], ["Bank statements (last 12–24 months)", true], ["Customers who owe you, by age (A/R aging)", A.arOpen > 0], ["Profit & loss and balance sheet (2–3 years + this year)", false], ["Business and personal tax returns (2–3 years)", false], ["List of current debts (this page)", DL.length > 0], ["Personal financial statement (SBA Form 413 for SBA loans)", false], ["What the money is for, and how it pays back", false], ["Ownership documents and IDs for 20%+ owners", false]];
+    h += '<div class="panel"><div class="eyebrow">What lenders will ask for</div>' + docs.map(function (d) { return '<div class="lchk ' + (d[1] ? "ok" : "") + '"><i>' + (d[1] ? "✓" : "○") + "</i>" + esc(d[0]) + (d[1] ? ' <span class="tiny" style="color:var(--green)">Liquara has this</span>' : "") + "</div>"; }).join("") +
+      '<button class="btn pri full" data-act="lender" style="margin-top:12px">Download my lender packet (PDF)</button><p class="tiny mute">Also helps: a personal credit score of 680+ for SBA and bank loans, and a business credit file (Dun & Bradstreet, Experian Business).</p></div>';
+
+    /* ---- where to apply ---- */
+    var LF = S.lenders && S.lenders.data;
+    h += '<div class="panel"><div class="eyebrow">Where to apply</div>' +
+      '<div class="gstep"><span class="gn">1</span><div class="grow"><b>Your own bank or credit union</b><div class="small mute">They already see your deposits. Ask for a business banker.</div></div></div>' +
+      '<div class="gstep"><span class="gn">2</span><div class="grow"><b>SBA Lender Match</b><div class="small mute">Free SBA tool: answer a few questions and SBA lenders contact you.</div><a class="tiny" href="https://www.sba.gov/funding-programs/loans/lender-match" target="_blank" rel="noopener">sba.gov ↗</a></div></div>' +
+      '<div class="gstep"><span class="gn">3</span><div class="grow"><b>Community lenders (CDFIs)</b><div class="small mute">Mission-driven lenders that often say yes when banks say no.</div><a class="tiny" href="https://ofn.org/cdfi-locator/" target="_blank" rel="noopener">CDFI locator ↗</a></div></div>' +
+      (LF ? (LF.lenders || []).map(function (x) { return '<div class="gstep"><span class="gn">' + HEART_SM + '</span><div class="grow"><b>' + esc(x.name) + '</b> <span class="chip">' + esc(x.type || "") + '</span><div class="small">' + esc(x.why || "") + '</div><div class="tiny mute">' + esc([x.products, x.speed].filter(Boolean).join(" · ")) + (x.url ? ' · <a href="' + esc(x.url) + '" target="_blank" rel="noopener">site ↗</a>' : "") + "</div></div></div>"; }).join("") + ((LF.tips || []).length ? '<div class="nwm mv"><span>Tips to get approved</span>' + LF.tips.map(esc).join("<br>") + "</div>" : "") : "") +
+      (paid() && !S.demo ? '<button class="btn ghost full" data-act="lenders" style="margin-top:10px"' + (ST.lendBusy ? " disabled" : "") + ">" + (ST.lendBusy ? '<span class="spin"></span> Finding lenders near you…' : LF ? "Find lenders again" : "Find lenders that fit me") + "</button>" : '<p class="note">Lenders matched to your business and city unlock with your plan.</p>') + "</div>";
+    h += '<p class="tiny mute" style="text-align:center">Estimates from your own numbers and public rates. Not a loan offer or financial advice; every lender decides for itself.</p>';
+    if (!R && helperReady() && !busy && !ST.ratesTried) { ST.ratesTried = true; setTimeout(function () { getRates(false); }, 50); }
+    return h + foot();
+  }
+  function calcOut() {
+    var c = ST.calc, A = ST.res.analysis, L = lendScore(), existing = debts().reduce(function (s, d) { return s + monthlyPay(d); }, 0) || A.debtMonth || 0;
+    var pay = pmtM(+c.amt || 0, +c.rate || 0, +c.yrs || 1), tot = pay * Math.round((+c.yrs || 1) * 12), dscr = (existing + pay) > 0 ? L.cfads / (existing + pay) : null, left = L.cfads - existing - pay;
+    return '<div class="kpis">' + kpi("Monthly payment", m(pay), "for " + c.yrs + " years") + kpi("Total interest", m(Math.max(0, tot - c.amt)), "over the loan") + kpi("Cash left each month", m(left), "after all loan payments", left < 0 ? "neg" : "pos") + kpi("Debt coverage", dscr ? dscr.toFixed(2) + "x" : "–", dscr && dscr >= 1.25 ? "lenders would be comfortable" : "below the 1.25x most lenders want", dscr && dscr >= 1.25 ? "pos" : "neg") + "</div>";
+  }
+  function planOut(p) {
+    if (!p) return "";
+    if (p.base.stuck) return '<p class="small">At today\'s payments some debt never gets paid off. Add extra each month to see a payoff date.</p>';
+    var mo = p.base.months - p.plan.months, sv = p.base.interest - p.plan.interest, end = new Date(); end.setMonth(end.getMonth() + p.plan.months);
+    return '<div class="kpis">' + kpi("Debt-free by", my(end), p.plan.months + " months") + kpi("Time saved", mo > 0 ? mo + " months" : "–", "vs. paying the minimum") + kpi("Interest saved", sv > 1 ? m(sv) : "–", "vs. paying the minimum", "pos") + "</div>";
+  }
+  function debtSheet(id) {
+    var d = id === "new" ? { id: "d" + Date.now(), type: "term", every: 30.4 } : debts().filter(function (x) { return x.id === id; })[0]; if (!d) return; ST.debtEd = d;
+    sheet('<h2>' + (id === "new" ? "Add a loan" : esc(d.name)) + '</h2><p class="small mute">The more you fill in, the better the payoff and refinance numbers. Check a recent statement.</p>' +
+      '<label class="f"><span>Name</span><input class="in" id="de_name" value="' + esc(d.name || "") + '" placeholder="e.g. Chase equipment loan"></label>' +
+      '<label class="f"><span>Kind</span><select class="in" id="de_type">' + Object.keys(LOAN_TYPES).map(function (k) { return '<option value="' + k + '"' + ((d.type || "term") === k ? " selected" : "") + ">" + LOAN_TYPES[k] + "</option>"; }).join("") + "</select></label>" +
+      '<label class="f"><span>Lender</span><input class="in" id="de_lender" value="' + esc(d.lender || "") + '" placeholder="Bank or company"></label>' +
+      '<div class="lcalc"><label class="f"><span>Balance owed today</span><input class="in" id="de_bal" inputmode="decimal" value="' + (d.balance || "") + '"></label><label class="f"><span>Interest rate %</span><input class="in" id="de_rate" inputmode="decimal" value="' + (d.rate || "") + '"></label></div>' +
+      '<div class="lcalc"><label class="f"><span>Payment</span><input class="in" id="de_pay" inputmode="decimal" value="' + (d.payment ? Math.round(d.payment * 100) / 100 : "") + '"></label><label class="f"><span>How often</span><select class="in" id="de_every"><option value="7"' + (d.every <= 8 ? " selected" : "") + '>Weekly</option><option value="30.4"' + (d.every > 8 && d.every < 60 ? " selected" : "") + '>Monthly</option><option value="91"' + (d.every >= 60 && d.every < 200 ? " selected" : "") + '>Quarterly</option><option value="365"' + (d.every >= 200 ? " selected" : "") + ">Yearly</option></select></label></div>" +
+      '<div class="lcalc"><label class="f"><span>Credit limit (lines and cards)</span><input class="in" id="de_limit" inputmode="decimal" value="' + (d.limit || "") + '"></label><label class="f"><span>Ends (month and year)</span><input class="in" id="de_end" type="month" value="' + esc(d.end || "") + '"></label></div>' +
+      '<label class="f"><span>Personal guarantee?</span><select class="in" id="de_pg"><option value="">Not sure</option><option value="yes"' + (d.pg === "yes" ? " selected" : "") + '>Yes</option><option value="no"' + (d.pg === "no" ? " selected" : "") + ">No</option></select></label>" +
+      '<button class="btn pri full" data-act="debtsave" style="margin-top:14px">Save</button>' + (id !== "new" && !d.found ? '<button class="btn ghost full" data-act="debtdel" style="margin-top:8px">Remove this loan</button>' : ""));
+  }
+  async function getRates(fresh) {
+    if (!helperReady()) { toast("Connect the Liquara helper first"); return; }
+    ST.ratesBusy = true; render();
+    try { var r = await helper("/rates", { fresh: !!fresh }); S.rates = { at: Date.now(), data: r }; saveS(); } catch (e) { toast("Couldn't get rates: " + e.message); }
+    ST.ratesBusy = false; render();
+  }
+  async function getLenders() {
+    if (gate("Lender matching unlocks with your free trial.")) return;
+    ST.lendBusy = true; render();
+    try { var r = await helper("/lenders", { industry: sector(), region: region() || "United States", revenue: coRev() || dataRev() || sizeRev() || undefined, amount: ST.calc && ST.calc.amt, purpose: "" }); S.lenders = { at: Date.now(), data: r }; saveS(); }
+    catch (e) { toast((e.code === "tier" || e.code === "limit") ? e.message : "Couldn't find lenders: " + e.message); }
+    ST.lendBusy = false; render();
   }
 
   /* ---------- sector news ---------- */
@@ -1220,6 +1520,16 @@
     if (d.scn) { ST.sc = Object.assign(defSc(), S.scenarios[+d.scn].sc); go("decide"); return; }
     if (d.scndel) { S.scenarios.splice(+d.scndel, 1); saveS(); render(); return; }
     var A_ = d.act;
+    if (A_ === "rates") { getRates(true); return; }
+    if (A_ === "lenders") { getLenders(); return; }
+    if (A_ === "debtedit") { debtSheet(t.dataset.i); return; }
+    if (A_ === "debthide") { S.debtHide = (S.debtHide || []).concat([t.dataset.k]); saveS(); render(); return; }
+    if (A_ === "debtdel") { var dd = ST.debtEd; S.debts = (S.debts || []).filter(function (x) { return x.id !== dd.id; }); saveS(); closeSheet(); render(); return; }
+    if (A_ === "debtsave") {
+      var e0 = ST.debtEd, g = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; }, num = function (id) { var v = parseFloat(g(id).replace(/[^\d.]/g, "")); return isFinite(v) ? v : undefined; };
+      var nd = { id: e0.found ? "d" + Date.now() : e0.id, key: e0.key, name: g("de_name") || e0.name || "Loan", type: g("de_type"), lender: g("de_lender"), balance: num("de_bal"), rate: num("de_rate"), payment: num("de_pay"), every: +g("de_every") || 30.4, limit: num("de_limit"), end: g("de_end"), pg: g("de_pg") };
+      S.debts = (S.debts || []).filter(function (x) { return x.id !== nd.id; }).concat([nd]); saveS(); closeSheet(); toast("Saved"); render(); return;
+    }
     if (A_ === "copick") { pickCo(t.dataset.cik); return; }
     if (A_ === "cofweb") { webCo(); return; }
     if (A_ === "cowebpick") { pickWebCo(+t.dataset.i); return; }
@@ -1239,7 +1549,7 @@
       if (!ST.res) { render(); return; }
       go("home"); return;
     }
-    if (A_ === "home") { var nat = false; try { nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (er) { } if (nat) { ST.launch = true; render(); window.scrollTo(0, 0); } else { try { sessionStorage.removeItem("lq_inapp"); } catch (er) { } location.href = "./"; } return; }
+    if (A_ === "home") { var nat = false; try { nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (er) { } if (nat) { if (ST.res) go("home"); else { render(); window.scrollTo(0, 0); } } else { try { sessionStorage.removeItem("lq_inapp"); } catch (er) { } location.href = "./"; } return; }
     if (A_ === "backdemo") { ST.gateMsg = null; ST.tab = "pulse"; render(); window.scrollTo(0, 0); return; }
     if (A_ === "theme") { S.theme = S.theme === "light" ? "dark" : "light"; saveS(); render(); return; }
     if (A_ === "tour") { startTour(); return; }
@@ -1290,7 +1600,17 @@
     else if (d.act === "sync") syncAll(false);
     else if (d.act === "demo") { delete S.budget; S.ccy = null; S.demo = d.id; delete S.company; saveS(); ST.qa = []; ST.sc = defSc(); scanAndShow("Demo: " + DEMO.get(d.id).name); }
     else if (d.act === "saveset") { S.company = document.getElementById("sco").value.trim() || undefined; var bv = document.getElementById("sbal").value.replace(/[$,\s]/g, ""); S.balance = bv === "" ? undefined : +bv; S.industry = document.getElementById("sind").value; S.size = document.getElementById("ssz").value; S.ccy = document.getElementById("sccy").value; S.region = document.getElementById("sreg").value.trim() || undefined; var hw = document.getElementById("shelper"); if (hw) S.helperUrl = hw.value.trim(); if (S.helperUrl) CFG.worker = S.helperUrl; saveS(); await analyze(); toast("Saved"); go("home"); }
-    else if (d.act === "wipe") { if (!confirmTwice(t)) return; await clearSrc(); S = {}; saveS(); ST.sources = []; ST.qa = []; ST.res = null; ST.model = null; render(); }
+    else if (d.act === "wipe") {
+      if (!confirmTwice(t)) return;
+      /* a true fresh start: every company, sample, upload, connection and report goes. Only the license, this device's id, language, look and helper address stay. */
+      try { await clearSrc(); } catch (er) { }
+      var keep = {}; ["license", "device", "lang", "theme", "helperUrl"].forEach(function (k) { if (S[k] !== undefined) keep[k] = S[k]; });
+      S = keep; saveS();
+      try { Object.keys(localStorage).forEach(function (k) { if (k !== "ao.s" && k.indexOf("lq_tr_") !== 0) localStorage.removeItem(k); }); sessionStorage.removeItem("lq_inapp"); } catch (er) { }
+      try { if (window.indexedDB && indexedDB.databases) (await indexedDB.databases()).forEach(function (db) { if (db.name) indexedDB.deleteDatabase(db.name); }); } catch (er) { }
+      toast("Everything's erased. Starting fresh.");
+      setTimeout(function () { location.replace(isNative() ? "index.html" : "app"); }, 600);
+    }
     else if (d.act === "savec") {
       if (gate("Live connections unlock with your free trial.")) return;
       var c = { id: uid(), name: document.getElementById("cn").value.trim() || "Live system", url: document.getElementById("cu").value.trim(), key: document.getElementById("ck").value.trim(), hdrName: document.getElementById("chn").value, hdrPrefix: document.getElementById("chp").value, scale: +document.getElementById("cs").value, kind: document.getElementById("ckind").value };
@@ -1317,6 +1637,8 @@
   });
   document.addEventListener("input", function (e) {
     if (e.target.id === "cofq") { cofSearch(e.target.value); return; }
+    if (/^lc_/.test(e.target.id || "")) { ST.calc = { amt: parseFloat((document.getElementById("lc_amt").value || "").replace(/[^\d.]/g, "")) || 0, rate: parseFloat(document.getElementById("lc_rate").value) || 0, yrs: parseFloat(document.getElementById("lc_yrs").value) || 1 }; var lo = document.getElementById("lcout"); if (lo) lo.innerHTML = calcOut(); return; }
+    if (e.target.id === "pp_extra") { ST.extra = +e.target.value; var pv = document.getElementById("ppv"); if (pv) pv.textContent = m(ST.extra); var po = document.getElementById("ppout"); if (po) po.innerHTML = planOut(debtPlan(ST.extra)); return; }
     var k = e.target.dataset && e.target.dataset.sc; if (!k) return;
     ST.sc[k] = e.target.tagName === "SELECT" ? e.target.value : +e.target.value;
     var lb = document.querySelector('[data-lbl="' + k + '"]'); if (lb && FMT[k]) lb.textContent = FMT[k](ST.sc[k]);
@@ -1327,7 +1649,7 @@
   /* ---------- start ---------- */
   (async function start() {
     applyTheme(); if (S.helperUrl) CFG.worker = S.helperUrl; if (!S.device) { S.device = uid() + uid(); saveS(); }
-    ST.launch = isNative() || location.hash === "#launch";
+    ST.launch = false;
     renewNow(true);
     setInterval(function () { renewNow(false); }, 3600e3);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) renewNow(false); });

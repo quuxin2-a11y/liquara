@@ -474,6 +474,8 @@
     function sum(f) { return M.tx.reduce(function (s, t) { return f(t) ? s + t.a : s; }, 0); }
     A.in90 = sum(function (t) { return t.k > q && t.a > 0; }); A.out90 = -sum(function (t) { return t.k > q && t.a < 0; });
     A.inMonth = A.in90 / 3; A.outMonth = A.out90 / 3; A.netMonth = A.inMonth - A.outMonth;
+    A.debtMonth = -sum(function (t) { return t.k > q && t.a < 0 && t.cat === "Loans & interest"; }) / 3;
+    A.ownerMonth = -sum(function (t) { return t.k > q && t.a < 0 && t.cat === "Owner & distributions"; }) / 3;
     A.in12 = sum(function (t) { return t.k > y1 && t.a > 0; }); A.inPrev12 = sum(function (t) { return t.k > y0 && t.k <= y1 && t.a > 0; });
     A.out12 = -sum(function (t) { return t.k > y1 && t.a < 0; });
     A.growth = A.inPrev12 > 0 ? A.in12 / A.inPrev12 - 1 : null;
