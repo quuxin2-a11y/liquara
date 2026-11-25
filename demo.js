@@ -64,6 +64,8 @@
       }
     });
     bank.sort(function (a, b) { return a.d - b.d; });
+    if (cfg.measure) { var y = add(end, -365), supN = {}; cfg.suppliers.forEach(function (s) { supN[s.name] = 1; }); var st = { inY: 0, outY: 0, supY: 0, total: 0 };
+      bank.forEach(function (t) { st.total += t.a; if (t.d > y) { if (t.a > 0) st.inY += t.a; else { st.outY -= t.a; if (supN[t.p]) st.supY -= t.a; } } }); return st; }
     var bal = cfg.opening * SC;
     var bankRows = [["Posted Date", "Description", "Debit", "Credit", "Balance"]];
     bank.forEach(function (t) { bal += t.a; bankRows.push([us(t.d), (t.p + " " + t.m).trim(), t.a < 0 ? money(-t.a) : "", t.a > 0 ? money(t.a) : "", money(bal)]); });
@@ -178,6 +180,83 @@
       if (o.rename) { var rn = function (n) { return o.rename[n] || n; }; cfg.fixed.forEach(function (f) { f.party = rn(f.party); }); cfg.suppliers.forEach(function (x) { x.name = rn(x.name); }); cfg.oneoff.forEach(function (x) { x.p = rn(x.p); }); }
       return build(cfg);
   }
-  var api = { get: function (k) { return COMPANIES[k](); }, list: [["bakery", "Sunrise Bakery", "Small business · about $1.1M"], ["northwind", "Northwind Components", "Mid-size · about $100M"], ["halvorsen", "Halvorsen Group", "Large, 3 currencies · about $800M"]] };
+  /* ---------- a fictional sample company for every industry and size ---------- */
+  var SCALE = { s1: 0.45, s2: 2.2, s3: 26, s4: 260, s5: 1900 };
+  var BAND = { s1: "about $550K", s2: "about $2.7M", s3: "about $32M", s4: "about $320M", s5: "about $2.3B" };
+  var IND = {
+    restaurant: { names: ["Sunrise Bakery", "Sunrise Bakery", "Harvest Table Group", "Copper Kettle Restaurants", "Golden Fork Hospitality"], what: "restaurant group", city: "Austin, TX", daily: 0.92, card: "SQUARE INC", season: "B",
+      cust: ["Lakeside Offices", "Bean There Cafe", "Hill Country Market", "Blue Bonnet Catering"], sup: ["Sysco", "US Foods", "Central Texas Mill", "Dairy Fresh Co"],
+      prod: [["Dine-in meals", 22, 7.4, 1800], ["Takeout & delivery", 19, 6.8, 1400], ["Coffee & drinks", 4.75, 1.05, 3500], ["Catering trays", 120, 92, 60], ["Desserts", 6.5, 2.1, 1300], ["Private events", 900, 520, 8]] },
+    retail: { names: ["Maple & Thread Boutique", "Maple & Thread", "Brightway Outfitters", "Brightway Stores", "Brightway Retail Group"], what: "retailer", city: "Denver, CO", daily: 0.95, card: "SHOPIFY PAYMENTS", season: "R",
+      cust: ["Corporate gift orders", "Wholesale partners"], sup: ["Pacific Apparel Co", "Northline Footwear", "Summit Supply", "Uline"],
+      prod: [["Apparel", 48, 22, 900], ["Footwear", 85, 44, 280], ["Accessories", 26, 9, 700], ["Outdoor gear", 120, 70, 160], ["Gift cards", 50, 50, 120], ["Clearance", 18, 15, 400]] },
+    construction: { names: ["Ridgeline Renovations", "Ridgeline Builders", "Ironwood Construction", "Ironwood Construction Group", "Ironwood Infrastructure"], what: "builder", city: "Phoenix, AZ", daily: 0, season: "C",
+      cust: ["Desert Ridge HOA", "Maricopa School District", "Camelback Properties", "Sonoran Medical Plaza", "Valley Retail Partners"], sup: ["Home Depot Pro", "Ferguson Supply", "Sunbelt Rentals", "ABC Concrete", "84 Lumber"],
+      prod: [["Remodels", 42000, 31000, 1.2], ["New builds", 260000, 214000, 0.15], ["Commercial fit-outs", 85000, 66000, 0.35], ["Repairs & service calls", 650, 300, 30], ["Roofing", 14000, 10200, 0.6], ["Change orders", 3200, 1700, 2]] },
+    services: { names: ["Shine Auto Detail", "Shine Auto Care", "Clearpath Home Services", "Clearpath Services", "Clearpath Services Group"], what: "service company", city: "Charlotte, NC", daily: 0.8, card: "STRIPE PAYOUT", season: "N",
+      cust: ["Fleet accounts", "Property managers", "Apartment communities"], sup: ["Grainger", "AutoZone Commercial", "Cintas", "Shell Fleet"],
+      prod: [["Standard service", 120, 38, 380], ["Premium service", 260, 85, 120], ["Memberships", 39, 6, 600], ["Repairs", 340, 150, 60], ["Add-ons", 35, 8, 500], ["Fleet contracts", 2200, 1300, 4]] },
+    professional: { names: ["Clark & Rivera CPAs", "Clark & Rivera Advisors", "Meridian Consulting Partners", "Meridian Advisory", "Meridian Global Advisory"], what: "advisory firm", city: "Chicago, IL", daily: 0.1, card: "STRIPE PAYOUT", season: "P",
+      cust: ["Lakeshore Health", "Prairie Logistics", "Union Street Bank", "Northside Schools", "Greenline Energy", "Wabash Foods"], sup: ["WeWork", "Thomson Reuters", "LinkedIn Sales", "Gusto Benefits"],
+      prod: [["Monthly retainers", 3500, 1600, 12], ["Tax & audit", 6800, 3400, 3], ["Projects", 24000, 13000, 0.6], ["Advisory hours", 220, 95, 120], ["Training", 1500, 500, 3], ["Software resale", 400, 310, 10]] },
+    health: { names: ["Bright Smile Dental", "Bright Smile Dental", "Riverbend Family Clinics", "Riverbend Health Partners", "Riverbend Health System"], what: "healthcare practice", city: "Columbus, OH", daily: 0.35, card: "PATIENT PAYMENTS", season: "N",
+      cust: ["Aetna", "UnitedHealthcare", "Medicare", "Blue Cross", "Cigna"], sup: ["Henry Schein", "McKesson", "Medline", "Quest Diagnostics"],
+      prod: [["Office visits", 165, 70, 380], ["Procedures", 950, 420, 25], ["Cleanings & preventive", 140, 45, 220], ["Lab work", 85, 40, 140], ["Imaging", 320, 120, 30], ["Products", 30, 12, 140]] },
+    manufacturing: { names: ["Precision Craft Works", "Precision Craft Works", "Northwind Components", "Northwind Components", "Halvorsen Group"], what: "manufacturer", city: "Milwaukee, WI", daily: 0, season: "N",
+      cust: ["Apex Industrial", "Brightline Energy", "Cascade Foods", "Delta Fabrication", "Harbor Marine"], sup: ["Nucor Steel", "Grainger", "Fastenal", "UPS Freight"],
+      prod: [["Machined parts", 34, 19.5, 1100], ["Assemblies", 118, 71, 250], ["Custom work", 22, 20.2, 600], ["Service kits", 64, 21, 180], ["Repairs", 450, 210, 12], ["Prototypes", 2500, 1600, 2]] },
+    realestate: { names: ["Oakline Rentals", "Oakline Property Co", "Keystone Property Management", "Keystone Properties", "Keystone Real Estate Trust"], what: "property company", city: "Atlanta, GA", daily: 0, season: "N",
+      cust: ["Tenant rents (Unit block A)", "Tenant rents (Unit block B)", "Commercial tenant: Peachtree Dental", "Commercial tenant: Midtown Fitness", "Management fees"], sup: ["Atlanta Water", "Georgia Power", "Mr. Handyman", "Waste Management", "Brightview Landscaping"],
+      prod: [["Residential rent", 1650, 420, 42], ["Commercial rent", 6200, 1500, 3], ["Management fees", 900, 300, 6], ["Parking & storage", 85, 10, 60], ["Late fees", 50, 0, 15], ["Application fees", 45, 10, 25]] },
+    software: { names: ["Pixel Lane Studio", "Pixel Lane Software", "Cloudnest Software", "Cloudnest Inc", "Cloudnest Global"], what: "software company", city: "Seattle, WA", daily: 0.6, card: "STRIPE PAYOUT", season: "N",
+      cust: ["Acme Logistics (annual plan)", "Brightpath Schools", "Coastal Credit Union", "Driftwood Retail", "Evergreen Clinics"], sup: ["AWS", "Google Workspace", "HubSpot", "Upwork contractors"],
+      prod: [["Starter plans", 29, 4, 1100], ["Pro plans", 99, 12, 420], ["Enterprise plans", 1800, 260, 8], ["Implementation", 4500, 2600, 1], ["Support add-on", 49, 10, 150], ["Custom development", 12000, 7800, 0.5]] },
+    wholesale: { names: ["Gulf Coast Supply", "Gulf Coast Distributors", "Atlas Wholesale", "Atlas Distribution", "Atlas Distribution Group"], what: "distributor", city: "Houston, TX", daily: 0, season: "N",
+      cust: ["H-E-B Stores", "Bayou Grocers", "Lone Star Restaurants", "Coastal Hardware", "Westpark Convenience", "Harris County Schools"], sup: ["Cargill", "General Mills Foodservice", "Ryder Logistics", "Sealed Air"],
+      prod: [["Dry goods", 24, 19.4, 1500], ["Frozen", 46, 37, 520], ["Paper & packaging", 31, 24, 600], ["Beverages", 18, 13.8, 1100], ["Cleaning supplies", 27, 19, 400], ["Equipment", 650, 540, 8]] },
+    other: { names: ["Bluebird Co", "Bluebird & Co", "Summit Holdings", "Summit Group", "Summit Global"], what: "business", city: "Kansas City, MO", daily: 0.5, card: "STRIPE PAYOUT", season: "N",
+      cust: ["Prairie Partners", "Riverfront Co", "Union Station Group", "Westport Ventures"], sup: ["Staples Business", "Uline", "FedEx", "Cintas"],
+      prod: [["Core product", 60, 26, 650], ["Services", 180, 80, 120], ["Subscriptions", 29, 6, 500], ["Custom orders", 900, 540, 10], ["Add-ons", 25, 7, 300], ["Wholesale", 30, 24, 300]] }
+  };
+  var SEAS = { B: [0.86, 0.84, 0.92, 0.97, 1.02, 1.0, 0.98, 0.96, 0.98, 1.02, 1.12, 1.38], R: [0.78, 0.8, 0.92, 0.96, 1.0, 0.98, 0.97, 1.02, 0.95, 1.0, 1.18, 1.55], C: [0.78, 0.82, 0.98, 1.06, 1.12, 1.15, 1.14, 1.12, 1.06, 1.0, 0.92, 0.82], P: [1.05, 1.12, 1.3, 1.35, 0.95, 0.92, 0.85, 0.88, 1.0, 1.0, 0.92, 0.9], N: [0.92, 0.95, 1.04, 1.02, 1.03, 1.0, 0.94, 0.96, 1.05, 1.06, 1.02, 0.98] };
+  function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+  function industryCo(ind, size) {
+    var t = IND[ind] || IND.other, tier = { s1: 0, s2: 1, s3: 2, s4: 3, s5: 4 }.hasOwnProperty(size) ? { s1: 0, s2: 1, s3: 2, s4: 3, s5: 4 }[size] : 1, sc = SCALE[size] || 1, big = tier >= 2, seedBase = 11 + tier * 7 + Object.keys(IND).indexOf(ind) * 31;
+    var name = t.names[tier], rev = 100000; /* monthly revenue at scale 1 */
+    var dailyRev = rev * t.daily, invRev = rev - dailyRev;
+    var cust = t.cust.map(function (n, i) { var share = (t.cust.length - i) / (t.cust.length * (t.cust.length + 1) / 2); return { name: n, every: 30, amt: invRev * share, terms: [30, 45, 30, 15, 60, 30][i % 6], late: [4, 12, 2, 21, 6, 9][i % 6], lateSd: 5 }; });
+    if (!invRev) cust = [];
+    var sup = t.sup.map(function (n, i) { return { name: n, every: [14, 30, 7, 30, 14][i % 5], amt: [9000, 7000, 2500, 3500, 4000][i % 5] * ([14, 30, 7, 30, 14][i % 5] / 30), terms: [30, 30, 15, 45, 21][i % 5], late: [2, 4, 0, 6, 1][i % 5] }; });
+    var fixed = [
+      { every: "month", day: 1, amt: 6000, party: big ? "Prologis" : "Oak Street Properties", memo: big ? "Lease" : "Rent" },
+      { every: big ? "semimonth" : "biweekly", amt: big ? 19500 : 18000, party: big ? "ADP Payroll" : "Gusto Payroll", memo: "Payroll", grow: 0.05, cv: 0.03 },
+      { every: "month", day: 10, amt: 700, party: big ? "Duke Energy" : "City Utilities", memo: "Utilities", cv: 0.06 },
+      { every: "month", day: 12, amt: 1300, party: big ? "JPMorgan Term Loan" : "Community Bank Loan", memo: "Loan payment" },
+      { every: "month", day: 6, amt: 260, party: big ? "Salesforce" : "QuickBooks Online", memo: "Subscription", grow: 0.08 },
+      { every: "month", day: 15, amt: 600, party: big ? "Google Ads" : "Meta Ads", memo: "Marketing", cv: 0.2 },
+      { every: "quarter", day: 20, off: 0, amt: 1500, party: big ? "Travelers Insurance" : "Hartford Insurance", memo: "Insurance" },
+      { every: "quarter", day: 15, off: 1, amt: 5200, party: big ? "IRS" : "IRS EFTPS", memo: "Estimated tax", grow: 0.07, cv: 0.08 }
+    ];
+    if (!big) fixed.push({ every: "month", day: 28, amt: 3500, party: "Owner Draw", memo: "Owner distribution" });
+    var cfg = { seed: seedBase, slug: slugify(name), name: name, start: START, end: END, opening: 52000, growth: 0.06 + (tier % 3) * 0.01, season: SEAS[t.season] || SEAS.N, scale: sc,
+      daily: dailyRev ? { party: t.card, base: dailyRev * 12 / 312, dow: [ind === "restaurant" || ind === "retail" ? 1.3 : 0.3, 0, 0.9, 0.95, 1.0, 1.15, ind === "restaurant" || ind === "retail" ? 1.6 : 0.9] } : null,
+      fixed: fixed, oneoff: [{ d: D(2025, 7, 14), a: -8000, p: big ? "Capital project" : "Equipment repair", m: "One-time" }, { d: D(2026, 3, 2), a: -11000, p: big ? "Systems upgrade" : "New equipment", m: "One-time" }],
+      customers: cust, suppliers: sup, products: t.prod.map(function (p) { return { name: p[0], price: p[1], cost: p[2], qty: p[3] }; }) };
+    /* tune to a typical margin and cash cushion for the industry */
+    var MARGIN = { restaurant: 0.06, retail: 0.07, construction: 0.08, services: 0.1, professional: 0.14, health: 0.11, manufacturing: 0.09, realestate: 0.18, software: 0.15, wholesale: 0.04, other: 0.09 }[ind] || 0.09;
+    cfg.measure = true; var st = build(cfg); cfg.measure = false;
+    var wantOut = st.inY * (1 - MARGIN), otherOut = st.outY - st.supY, f = st.supY > 0 ? Math.max(0.2, (wantOut - otherOut) / st.supY) : 1;
+    cfg.suppliers.forEach(function (s) { s.amt *= f; });
+    cfg.measure = true; st = build(cfg); cfg.measure = false;
+    var cushionDays = 38 + (seedBase % 5) * 9, wantEnd = cushionDays * (st.outY / 365);
+    cfg.opening = Math.max(wantEnd * 0.25, wantEnd - st.total) / sc;
+    var c = build(cfg);
+    c.about = "Fictional " + t.what + " in " + t.city + ", " + BAND[size] + " revenue a year.";
+    return c;
+  }
+  var api = { get: function (k) { if (/^ind:/.test(k)) { var q = k.split(":"); return industryCo(q[1], q[2]); } return COMPANIES[k](); }, pick: function (ind, size) {
+      if (ind === "restaurant" && (size === "s1" || size === "s2")) return "bakery";
+      if (ind === "manufacturing") return size === "s3" ? "northwind" : size === "s4" || size === "s5" ? "halvorsen" : "ind:manufacturing:" + size;
+      return "ind:" + (IND[ind] ? ind : "other") + ":" + (SCALE[size] ? size : "s2"); }, list: [["bakery", "Sunrise Bakery", "Small business · about $1.1M"], ["northwind", "Northwind Components", "Mid-size · about $100M"], ["halvorsen", "Halvorsen Group", "Large, 3 currencies · about $800M"]] };
   if (typeof module !== "undefined") module.exports = api; else root.AODemo = api;
 })(typeof window !== "undefined" ? window : this);

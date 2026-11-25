@@ -9,15 +9,91 @@
 
   /* ---------- storage: settings in localStorage, data in IndexedDB, all on this device ---------- */
   function loadS() { try { return JSON.parse(localStorage.getItem("ao.s") || "{}"); } catch (e) { return {}; } }
-  function saveS() { try { localStorage.setItem("ao.s", JSON.stringify(S)); } catch (e) { } }
+  function saveS() { try { localStorage.setItem("ao.s", JSON.stringify(S)); } catch (e) { } if (typeof markDirty === "function") markDirty(); }
   var dbp = null;
   function db() { if (dbp) return dbp; dbp = new Promise(function (ok, no) { var r = indexedDB.open("aorta", 1); r.onupgradeneeded = function () { r.result.createObjectStore("src", { keyPath: "id" }); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); return dbp; }
   function tx(mode, fn) { return db().then(function (d) { return new Promise(function (ok, no) { var t = d.transaction("src", mode), s = t.objectStore("src"), out = fn(s); t.oncomplete = function () { ok(out && out.result !== undefined ? out.result : out); }; t.onerror = function () { no(t.error); }; }); }); }
   function allSrc() { return tx("readonly", function (s) { return s.getAll(); }); }
-  function putSrc(o) { return tx("readwrite", function (s) { s.put(o); }); }
-  function delSrc(id) { return tx("readwrite", function (s) { s.delete(id); }); }
+  function putSrc(o) { return tx("readwrite", function (s) { s.put(o); }).then(function (x) { if (o.origin !== "demo" && typeof markDirty === "function") markDirty(); return x; }); }
+  function delSrc(id) { return tx("readwrite", function (s) { s.delete(id); }).then(function (x) { if (typeof markDirty === "function") markDirty(); return x; }); }
   function clearSrc() { return tx("readwrite", function (s) { s.clear(); }); }
   function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+
+  /* ================= Sync across devices (license-based, encrypted on the device) ================= */
+  var LOCAL_ONLY = ["license", "device", "lang", "theme", "helperUrl", "demo", "pin", "syncRev", "syncAt", "syncDirty", "sync", "rates", "licMsg", "trial", "devName"];
+  var SYNC = { t: 0, busy: false, applying: false };
+  function syncOn() { return paid() && !S.demo && S.license && S.license.key && S.sync !== false && helperReady() && window.JSZip && crypto && crypto.subtle; }
+  async function syncKey() { var base = await crypto.subtle.importKey("raw", new TextEncoder().encode("liquara-sync|" + S.license.key), "PBKDF2", false, ["deriveKey"]); return crypto.subtle.deriveKey({ name: "PBKDF2", salt: new TextEncoder().encode("liquara-sync-v1"), iterations: 120000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]); }
+  function b64(u8) { var s = ""; for (var i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); }
+  function unb64(s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  async function packData() {
+    var s = {}; Object.keys(S).forEach(function (k) { if (LOCAL_ONLY.indexOf(k) < 0) s[k] = S[k]; });
+    var src = (await allSrc()).filter(function (x) { return x.origin !== "demo"; });
+    var z = new JSZip(); z.file("d.json", JSON.stringify({ v: 1, s: s, src: src }));
+    var raw = await z.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 6 } });
+    var iv = crypto.getRandomValues(new Uint8Array(12)), ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, await syncKey(), raw));
+    return "v1." + b64(iv) + "." + b64(ct);
+  }
+  async function unpackData(blob) {
+    var p = String(blob).split("."); if (p[0] !== "v1") throw new Error("Unknown sync format");
+    var raw = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(p[1]) }, await syncKey(), unb64(p[2]));
+    var z = await JSZip.loadAsync(raw); return JSON.parse(await z.file("d.json").async("string"));
+  }
+  function devName() { if (S.devName) return S.devName; return isNative() ? "Android app" : /Android|iPhone|iPad/i.test(navigator.userAgent) ? "phone browser" : "computer"; }
+  function markDirty() { if (SYNC.applying || S.demo || !paid()) return; S.syncDirty = Date.now(); try { localStorage.setItem("ao.s", JSON.stringify(S)); } catch (e) { } clearTimeout(SYNC.t); SYNC.t = setTimeout(function () { syncPush(false); }, 4000); }
+  async function syncPush(force) {
+    if (!syncOn() || SYNC.busy) return;
+    if (!S.syncRev && !SYNC.checked) { SYNC.checked = true; await syncPull(false); if (S.syncRev) return; }
+    if (!hasOwnData()) return; /* never overwrite the saved copy with an empty device */
+    SYNC.busy = true;
+    try {
+      var blob = await packData(), r;
+      try { r = await helper("/sync/push", { blob: blob, base: S.syncRev || 0, devName: devName(), force: !!force }); }
+      catch (e) { if (e.status === 409) { SYNC.busy = false; await syncPull(true); return; } throw e; }
+      S.syncRev = r.rev; S.syncAt = r.at; delete S.syncDirty; saveRaw();
+    } catch (e) { S.syncErr = e.message; saveRaw(); }
+    SYNC.busy = false;
+  }
+  function saveRaw() { try { localStorage.setItem("ao.s", JSON.stringify(S)); } catch (e) { } }
+  async function syncPull(afterConflict) {
+    if (!syncOn() || SYNC.busy) return false; SYNC.busy = true; var changed = false;
+    try {
+      var r = await helper("/sync/pull", { have: S.syncRev || 0 });
+      if (r.empty) { SYNC.busy = false; if (hasOwnData()) syncPush(false); return false; }
+      if (r.same) { SYNC.busy = false; if (S.syncDirty) syncPush(false); return false; }
+      /* a device that has never synced always takes the saved copy first; after that, the newest change wins */
+      if (S.syncRev && S.syncDirty && !afterConflict && S.syncDirty > (r.at || 0) && hasOwnData()) { SYNC.busy = false; await syncPush(true); return false; }
+      var d = await unpackData(r.blob);
+      SYNC.applying = true;
+      var keep = {}; LOCAL_ONLY.forEach(function (k) { if (S[k] !== undefined) keep[k] = S[k]; });
+      S = Object.assign({}, d.s || {}, keep); delete S.demo; S.syncRev = r.rev; S.syncAt = r.at; delete S.syncDirty; saveRaw();
+      await clearSrc(); for (var i = 0; i < (d.src || []).length; i++) await putSrc(d.src[i]);
+      ST.sources = await allSrc(); ST.res = null; ST.model = null;
+      if (ST.sources.length || (S.costs || []).length) await analyze();
+      SYNC.applying = false; changed = true;
+      toast("Your data is here, synced from your " + (r.dev || "other device"));
+    } catch (e) { SYNC.applying = false; if (/decrypt|operation/i.test(e.message || "")) S.syncErr = "Couldn't unlock the synced data"; }
+    SYNC.busy = false; if (changed) render(); return changed;
+  }
+  function hasOwnData() { return !S.demo && ((ST.sources && ST.sources.filter(function (x) { return x.origin !== "demo"; }).length) || (S.costs || []).length || S.company || S.size); }
+  function syncPanel() {
+    if (!paid() || S.demo) return "";
+    var on = S.sync !== false;
+    return '<div class="panel"><div class="eyebrow">Sync across your devices</div><p class="small mute" style="margin:0 0 10px">' + (on ? "Your company setup, files and settings follow your license to the website and the app. They're scrambled with your license key on this device before they're stored." : "Sync is off. Your data stays only on this device.") + "</p>" +
+      (on ? '<div class="tiny mute" style="margin-bottom:10px">' + (S.syncAt ? "Last synced " + new Date(S.syncAt).toLocaleString() : "Not synced yet") + (S.syncErr ? ' · <span class="warn">' + esc(S.syncErr) + "</span>" : "") + "</div>" : "") +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' + (on ? '<button class="btn sm" data-act="syncnow">Sync now</button>' : "") + '<button class="btn ghost sm" data-act="synctoggle">' + (on ? "Turn sync off" : "Turn sync on") + "</button></div></div>";
+  }
+
+  /* ---------- install on a computer (Chrome / Edge) ---------- */
+  var INSTALL = null;
+  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); INSTALL = e; if (ST.tab === "settings") render(); });
+  window.addEventListener("appinstalled", function () { INSTALL = null; toast("Liquara is installed. Find it on your desktop or Start menu."); });
+  function installPanel() {
+    if (isNative()) return "";
+    var standalone = window.matchMedia && matchMedia("(display-mode: standalone)").matches;
+    if (standalone) return "";
+    return '<div class="panel"><div class="eyebrow">Install Liquara</div><p class="small mute" style="margin:0 0 10px">' + (INSTALL ? "Put Liquara on this computer with its own icon and window, like a normal program." : /iPhone|iPad/i.test(navigator.userAgent) ? "On iPhone: tap Share, then Add to Home Screen." : "In Chrome or Edge, use the Install icon at the right end of the address bar. On Android, get the app from the Mobile app page.") + '</p><div class="row" style="gap:8px;flex-wrap:wrap">' + (INSTALL ? '<button class="btn pri" data-act="install">Install on this computer</button>' : "") + '<a class="btn ghost" href="mobile" target="_blank" rel="noopener">Android app</a><a class="btn ghost" href="account" target="_blank" rel="noopener">My account</a></div></div>';
+  }
 
   /* ---------- small helpers ---------- */
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -241,6 +317,7 @@
     applyTheme();
     if (S.pin && !unlocked) { syncNav(false); app.innerHTML = viewLock(); applyLang(); setTimeout(function () { var p = document.getElementById("pinin"); if (p) p.focus(); }, 50); return; }
     if (ST.launch) { syncNav(false); app.innerHTML = viewLaunch(); applyLang(); launchFlow(); return; }
+    if (!ST.res && ST.obData && paid() && ST.tab === "data") { syncNav(false); app.innerHTML = viewData(); applyLang(); webFx(); return; }
     if (!ST.res) { syncNav(false); app.innerHTML = ST.model && !ST.model.tx.length ? viewNoBank() : viewOnboard(); applyLang(); webFx(); return; }
     if (locked() && ["plans", "settings", "about"].indexOf(ST.tab) < 0) ST.tab = "plans";
     if (tierNeeded() && ["plans", "settings", "about", "data"].indexOf(ST.tab) < 0) ST.tab = "fit";
@@ -649,7 +726,8 @@
     h += '<div class="panel"><div class="eyebrow">Look and alerts</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="theme">' + (S.theme === "light" ? "Switch to dark" : "Switch to light") + '</button><button class="btn ghost" data-act="brief">Monday cash brief: ' + (S.brief ? "on" : "off") + '</button></div></div>';
     h += '<div class="panel"><div class="eyebrow">Language</div>' + langSelect("slang") + '<label class="row" style="gap:8px;margin-top:10px;align-items:center"><input type="checkbox" id="sai"' + (S.aiTranslate !== false ? " checked" : "") + '> <span class="small">Translate everything with AI</span></label><p class="note">Main screens are built in. With the Liquara helper set up, the rest (explanations, answers, file names) is translated by AI once and saved on this device. Ask understands questions in any of these languages when the helper is on.</p></div>';
     h += '<div class="panel"><div class="eyebrow">Security</div>' + (S.pin ? '<p class="small mute">A PIN protects Liquara on this device.</p><div class="row" style="gap:8px"><input class="in" id="pin0" type="password" inputmode="numeric" placeholder="Current PIN" style="max-width:180px"><button class="btn ghost" data-act="clearpin">Remove PIN</button></div>' : '<p class="small mute">Optional. Ask for a PIN every time Liquara opens.</p><div class="row" style="gap:8px"><input class="in" id="pin1" type="password" inputmode="numeric" placeholder="4 to 8 digits" style="max-width:180px"><button class="btn" data-act="setpin">Set PIN</button></div>') + '</div>';
-    h += '<div class="panel"><div class="eyebrow">Your data</div><p class="small mute" style="margin:0 0 10px">Everything stays in Liquara on this device unless you choose AI reading or live checks.</p><button class="btn ghost" data-act="wipe" style="border-color:rgba(255,125,125,.4);color:var(--red)">Erase all data and start over</button></div>';
+    h += syncPanel() + installPanel();
+    h += '<div class="panel"><div class="eyebrow">Your data</div><p class="small mute" style="margin:0 0 10px">' + (paid() && S.sync !== false && !S.demo ? "Saved on this device and synced (scrambled with your license key) to your other devices. AI reading and live checks send only what they need." : "Everything stays in Liquara on this device unless you choose AI reading or live checks.") + '</p><button class="btn ghost" data-act="wipe" style="border-color:rgba(255,125,125,.4);color:var(--red)">Erase all data and start over</button></div>';
     return h + foot();
   }
   function viewAbout() {
@@ -820,13 +898,14 @@
     if (step === "size") return top + '<div class="ob"><div class="eyebrow">Step 1 of 2</div><h1>How big is your business?</h1><p class="mute">Yearly revenue. We\'ll show you Liquara running a company your size.</p>' + coFinder("ob") + '<div class="ordiv"><span>or pick a size</span></div><div class="obgrid">' + SIZES.map(function (x) { return '<button class="opt" data-size="' + x[0] + '"><div class="ic">' + ic("data") + '</div><div><b>' + x[1] + '</b><span>' + ({ s1: "Owner-run shops and studios", s2: "Growing small businesses", s3: "Mid-size companies with a finance team", s4: "Large companies, several entities", s5: "Enterprises and groups" })[x[0]] + "</span></div></button>"; }).join("") + "</div></div>";
     if (step === "industry") return top + '<div class="ob"><div class="eyebrow">Step 2 of 2</div><h1>What kind of business?</h1><p class="mute">Used to compare you with businesses like yours.</p><div class="chips" style="flex-wrap:wrap">' + INDUSTRIES.map(function (x) { return '<button class="chip" data-ind="' + x[0] + '">' + x[1] + "</button>"; }).join("") + '</div><button class="btn ghost" style="margin-top:18px" data-ob="size">Back</button></div>';
     var cc = S.co ? '<div class="cocard" style="margin-bottom:16px"><div class="grow"><div class="tiny mute">We found your company</div><b>' + esc(S.co.name) + "</b>" + (S.co.tickers && S.co.tickers[0] ? ' <span class="chip">' + esc(S.co.tickers[0]) + "</span>" : "") + '<div class="tiny mute">' + esc([S.co.sector, [S.co.city, S.co.state].filter(Boolean).join(", "), S.co.revenue ? "~" + m(S.co.revenue) + " revenue" : ""].filter(Boolean).join(" · ")) + '</div></div></div>' : "";
+    if (paid() && !S.demo) return top + '<div class="ob"><h1>' + (S.company ? "Welcome, " + esc(S.company) : "You're all set") + '</h1><p class="mute">Your license is active' + (S.size ? " and your company is set up" : "") + '. Add your bank file or connect your systems to see your own numbers.</p>' + cc + '<button class="btn pri full" data-act="pick">Add my bank file</button><button class="btn ghost full" style="margin-top:10px" data-act="obdata">Other ways to connect</button><button class="btn ghost full" style="margin-top:10px" data-act="syncnow">Bring in my data from my other device</button></div>';
     return top + '<div class="ob"><h1>Ready when you are</h1>' + cc + '<button class="btn pri full" data-act="tour">Watch how it works (60 sec)</button><button class="btn ghost full" style="margin-top:10px" data-act="sample">Skip to the sample company</button></div>';
   }
   /* the walkthrough plays like a short video, built from the sample company's real results */
   var TOUR = null;
   async function startTour() {
     var sz = SIZES.filter(function (x) { return x[0] === S.size; })[0] || SIZES[0];
-    S.demo = sz[2]; saveS(); syncNav(false);
+    S.demo = DEMO.pick ? DEMO.pick(S.industry || "other", S.size || "s2") : sz[2]; saveS(); syncNav(false);
     app.innerHTML = '<div class="tour"><div class="spin"></div></div>';
     await analyze();
     var A = ST.res.analysis, FC = ST.res.forecast, B = ST.model.bt, F = ST.res.fit, nm = DEMO.get(S.demo).name;
@@ -1434,7 +1513,9 @@
   async function renewNow(force) {
     if (!S.license || !helperReady()) return;
     if (!force && S.license.checked && Date.now() - S.license.checked < 6 * 3600e3 && S.license.until - Date.now() > 864e5) return;
-    try { var r = await helper("/renew", { device: S.device, rev: S.demo ? undefined : fitRev(), cik: S.demo || !S.co || !S.co.cik ? undefined : S.co.cik }); await setLicense(r.code, r); S.license.needs = r.needs || ""; saveS(); }
+    try { var r = await helper("/renew", { device: S.device, rev: S.demo ? undefined : fitRev(), cik: S.demo || !S.co || !S.co.cik ? undefined : S.co.cik }); await setLicense(r.code, r);
+      if (r.name && !S.company && !S.demo) { S.company = r.name; saveRaw(); }
+      if (r.syncRev && r.syncRev > (S.syncRev || 0)) syncPull(false); S.license.needs = r.needs || ""; saveS(); }
     catch (e) { if (e.code === "revoked" || e.code === "inactive" || e.code === "invalid" || e.code === "devices") { S.licMsg = e.message; delete S.license; saveS(); ST.gateMsg = e.message; render(); } }
   }
   async function activateKey(v) {
@@ -1442,6 +1523,9 @@
     if (/^LQ1\./.test(v)) { await setLicense(v); await renewNow(true); if (!S.license) throw new Error(S.licMsg || "That license isn't active"); return; }
     if (!helperReady()) throw new Error("The Liquara helper isn't set up yet");
     var r = await helper("/activate", { key: v, device: S.device }); await setLicense(r.code, r);
+    if (r.name && !S.company) { S.company = r.name; saveRaw(); }
+    var got = await syncPull(false);
+    if (!got && !ST.res && !S.size) toast("License active. Set up your company to start.");
   }
 
   /* ---------- PIN lock ---------- */
@@ -1520,6 +1604,10 @@
     if (d.scn) { ST.sc = Object.assign(defSc(), S.scenarios[+d.scn].sc); go("decide"); return; }
     if (d.scndel) { S.scenarios.splice(+d.scndel, 1); saveS(); render(); return; }
     var A_ = d.act;
+    if (A_ === "install") { if (!INSTALL) return; INSTALL.prompt(); try { await INSTALL.userChoice; } catch (er) { } INSTALL = null; render(); return; }
+    if (A_ === "syncnow") { if (!paid()) { toast("Add your license key first"); return; } if (S.sync === false) { S.sync = true; saveRaw(); } toast("Syncing…"); var got = await syncPull(false); if (!got) { await syncPush(false); toast(S.syncErr ? "Couldn't sync: " + S.syncErr : "Up to date"); } render(); return; }
+    if (A_ === "synctoggle") { S.sync = S.sync === false; saveRaw(); if (S.sync) syncPush(false); render(); return; }
+    if (A_ === "obdata") { ST.obData = true; S.demo = undefined; delete S.demo; saveRaw(); ST.tab = "data"; ST.res = ST.res || null; render(); return; }
     if (A_ === "rates") { getRates(true); return; }
     if (A_ === "lenders") { getLenders(); return; }
     if (A_ === "debtedit") { debtSheet(t.dataset.i); return; }
@@ -1553,7 +1641,7 @@
     if (A_ === "backdemo") { ST.gateMsg = null; ST.tab = "pulse"; render(); window.scrollTo(0, 0); return; }
     if (A_ === "theme") { S.theme = S.theme === "light" ? "dark" : "light"; saveS(); render(); return; }
     if (A_ === "tour") { startTour(); return; }
-    if (A_ === "sample") { if (TOUR) clearTimeout(TOUR.t); TOUR = null; var sz = SIZES.filter(function (x) { return x[0] === S.size; })[0] || SIZES[0]; S.demo = S.demo || sz[2]; saveS(); await analyze(); ST.tab = "home"; render(); return; }
+    if (A_ === "sample") { if (TOUR) clearTimeout(TOUR.t); TOUR = null; var sz = SIZES.filter(function (x) { return x[0] === S.size; })[0] || SIZES[0]; S.demo = S.demo || (DEMO.pick ? DEMO.pick(S.industry || "other", S.size || "s2") : sz[2]); saveS(); await analyze(); ST.tab = "home"; render(); return; }
     if (A_ === "tprev" && TOUR) { TOUR.i = Math.max(0, TOUR.i - 1); showScene(); return; }
     if (A_ === "tnext" && TOUR) { if (TOUR.i >= TOUR.scenes.length - 1) { TOUR = null; ST.tab = "home"; render(); } else { TOUR.i++; showScene(); } return; }
     if (A_ === "tpause" && TOUR) { TOUR.paused = !TOUR.paused; showScene(); return; }
@@ -1602,10 +1690,11 @@
     else if (d.act === "saveset") { S.company = document.getElementById("sco").value.trim() || undefined; var bv = document.getElementById("sbal").value.replace(/[$,\s]/g, ""); S.balance = bv === "" ? undefined : +bv; S.industry = document.getElementById("sind").value; S.size = document.getElementById("ssz").value; S.ccy = document.getElementById("sccy").value; S.region = document.getElementById("sreg").value.trim() || undefined; var hw = document.getElementById("shelper"); if (hw) S.helperUrl = hw.value.trim(); if (S.helperUrl) CFG.worker = S.helperUrl; saveS(); await analyze(); toast("Saved"); go("home"); }
     else if (d.act === "wipe") {
       if (!confirmTwice(t)) return;
+      if (paid() && S.license && S.license.key && helperReady()) { try { await helper("/sync/delete", {}); } catch (er) { } }
       /* a true fresh start: every company, sample, upload, connection and report goes. Only the license, this device's id, language, look and helper address stay. */
       try { await clearSrc(); } catch (er) { }
       var keep = {}; ["license", "device", "lang", "theme", "helperUrl"].forEach(function (k) { if (S[k] !== undefined) keep[k] = S[k]; });
-      S = keep; saveS();
+      S = keep; saveRaw();
       try { Object.keys(localStorage).forEach(function (k) { if (k !== "ao.s" && k.indexOf("lq_tr_") !== 0) localStorage.removeItem(k); }); sessionStorage.removeItem("lq_inapp"); } catch (er) { }
       try { if (window.indexedDB && indexedDB.databases) (await indexedDB.databases()).forEach(function (db) { if (db.name) indexedDB.deleteDatabase(db.name); }); } catch (er) { }
       toast("Everything's erased. Starting fresh.");
@@ -1652,8 +1741,11 @@
     ST.launch = false;
     renewNow(true);
     setInterval(function () { renewNow(false); }, 3600e3);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) renewNow(false); });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) { renewNow(false); syncPull(false); } else if (S.syncDirty) syncPush(false); });
     try { ST.sources = await allSrc(); } catch (e) { ST.sources = []; }
+    setTimeout(function () { syncPull(false); }, 1500);
+    var lm = /[#&]lic=([A-Za-z0-9-]+)/.exec(location.hash);
+    if (lm) { try { history.replaceState(null, "", location.pathname + location.search); } catch (er) { } if (!paid() || (S.license && S.license.key !== lm[1].toUpperCase())) { toast("Unlocking with your license…"); activateKey(decodeURIComponent(lm[1])).then(function () { toast("Unlocked. Welcome back."); render(); }).catch(function (er) { toast(er.message); }); } }
     if (!S.demo && !ST.sources.length && !(S.costs || []).length) { render(); return; }
     await analyze(); render();
     if (S.conns && S.conns.length) syncAll(true);
