@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,13 +17,14 @@ jobs:
       artifact: ${{ steps.name.outputs.artifact }}
     steps:
       - uses: actions/checkout@v4
-      - id: name
-        run: echo "artifact=site-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - name: Prepare site
         run: |
+          shopt -s nullglob
           mkdir _site
-          cp *.html *.js *.css *.png *.jpg *.svg manifest.webmanifest _site/
-          if [ -f CNAME ]; then cp CNAME _site/; fi
+          for f in *.html *.js *.css *.png *.jpg *.jpeg *.svg *.webp *.gif *.ico *.webmanifest CNAME; do cp "$f" _site/; done
+          ls _site
+      - id: name
+        run: echo "artifact=site-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
