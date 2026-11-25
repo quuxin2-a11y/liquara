@@ -229,7 +229,7 @@
         var baseY = H * (r ? 0.86 : 0.18), amp = H * (0.06 + r * 0.03), ph = r * 2.1;
         for (var l = 0; l < lines; l++) {
           var k = l / (lines - 1), off = (k - 0.5) * (W < 700 ? 60 : 110);
-          var a = (0.04 + 0.22 * Math.pow(1 - Math.abs(k - 0.5) * 2, 2)) * (light ? 0.9 : 1);
+          var a = Math.min(0.6, (0.04 + 0.22 * Math.pow(1 - Math.abs(k - 0.5) * 2, 2)) * (light ? 0.9 : 1) * (WEBFX.boost || 1));
           ctx.strokeStyle = light ? (r ? "rgba(11,138,99," + a + ")" : "rgba(110,150,0," + a + ")") : (r ? "rgba(46,230,176," + a * 0.85 + ")" : "rgba(200,255,77," + a + ")");
           ctx.lineWidth = l === Math.floor(lines / 2) ? 1.4 : 0.7; ctx.beginPath();
           for (var x = -40; x <= W + 40; x += 16) {
@@ -241,7 +241,7 @@
       }
       ctx.globalCompositeOperation = "source-over";
     }
-    function loop() { if (!document.hidden) { t += 0.008; draw(); } requestAnimationFrame(loop); }
+    function loop() { if (!document.hidden && WEBFX.live !== false) { t += 0.008; draw(); } requestAnimationFrame(loop); }
     size(); addEventListener("resize", function () { size(); draw(); });
     if (calm()) draw(); else loop();
     /* glow that follows the mouse across cards */
@@ -299,7 +299,16 @@
     });
   }
   var fillT = 0; addEventListener("resize", function () { clearTimeout(fillT); fillT = setTimeout(function () { fillGrids(); balanceCols(); }, 150); });
+  /* the phone app shows the same live ribbons as the website */
+  function phoneFlow() {
+    WEBFX.boost = ST.res ? 1 : 2;
+    if (isWeb()) return;
+    var on = !calm(); WEBFX.live = on; /* ribbons everywhere, like the website; brighter on welcome screens */
+    if (on) webFlow();
+    var cv = document.getElementById("webflow"); if (cv) cv.style.opacity = on ? "1" : "0";
+  }
   function webFx() {
+    phoneFlow();
     if (!isWeb()) return;
     webFlow(); fillGrids(); balanceCols();
     var key = (ST.res ? "app:" : "ob:") + ST.tab + ":" + (S.lens || "") + ":" + (ST.hz || "") + ":" + (ST.compSec || "") + ":" + (ST.ob || "") + ":" + !!S.demo; if (key === WEBFX.tab) return; WEBFX.tab = key;
@@ -893,9 +902,19 @@
   /* ---------- onboarding: size, industry, walkthrough, sample ---------- */
   var HEART = '<svg viewBox="88 96 336 336" class="mk"><path d="M256 420 C 150 352, 92 292, 92 214 C 92 150, 138 104, 196 104 C 226 104, 246 118, 256 138 C 266 118, 286 104, 316 104 C 374 104, 420 150, 420 214 C 420 292, 362 352, 256 420 Z" fill="#c8ff4d"/><circle cx="318" cy="200" r="30" fill="#0b1226"/></svg>';
   function viewOnboard() {
-    var step = ST.ob || (S.size ? (S.industry ? "start" : "industry") : "size");
+    var step = ST.ob || (S.size ? (S.industry ? "start" : "industry") : (paid() ? "size" : "welcome"));
     var top = '<div class="obtop"><button class="homebtn" data-act="home" aria-label="Home" title="Home">' + HEART + "</button>" + '<b>Liquara</b><span style="margin-inline-start:auto;max-width:150px">' + langSelect("oblang") + "</span></div>";
-    if (step === "size") return top + '<div class="ob"><div class="eyebrow">Step 1 of 2</div><h1>How big is your business?</h1><p class="mute">Yearly revenue. We\'ll show you Liquara running a company your size.</p>' + coFinder("ob") + '<div class="ordiv"><span>or pick a size</span></div><div class="obgrid">' + SIZES.map(function (x) { return '<button class="opt" data-size="' + x[0] + '"><div class="ic">' + ic("data") + '</div><div><b>' + x[1] + '</b><span>' + ({ s1: "Owner-run shops and studios", s2: "Growing small businesses", s3: "Mid-size companies with a finance team", s4: "Large companies, several entities", s5: "Enterprises and groups" })[x[0]] + "</span></div></button>"; }).join("") + "</div></div>";
+    if (step === "welcome") return top + '<div class="ob obw"><div class="obhero">' + HEART + '</div><h1>Know where your cash is going. <em>With odds.</em></h1><p class="mute">Forecasts, alerts and plain answers for your business, in your pocket.</p>' +
+      '<button class="obpath pri" data-ob="signin"><span class="oi">' + ic("link") + '</span><span><b>I\'m a customer</b><em>Sign in with your email and license key</em></span><i>›</i></button>' +
+      '<button class="obpath" data-ob="size"><span class="oi">' + ic("demo") + '</span><span><b>Explore a sample company</b><em>No sign-up. See Liquara on a business your size</em></span><i>›</i></button>' +
+      '<button class="obpath" data-act="obtrial"><span class="oi">' + ic("up") + '</span><span><b>Start a free trial</b><em>14 days free, then use your own numbers</em></span><i>›</i></button>' +
+      '<p class="tiny mute obtrust">14-day free trial · Cancel any time · Your data stays yours</p></div>';
+    if (step === "signin") return top + '<div class="ob obw"><button class="lnk obback" data-ob="welcome">‹ Back</button><div class="eyebrow">Customer sign-in</div><h1>Welcome back</h1><p class="mute">Use the email you subscribed with and the license key from your welcome email. Your company and data come right over.</p>' +
+      '<label class="f"><span>Email</span><input class="in" id="si_em" type="email" autocomplete="email" autocapitalize="off" placeholder="you@company.com" value="' + esc(S.lastEmail || "") + '"></label>' +
+      '<label class="f"><span>License key</span><input class="in" id="si_key" autocapitalize="characters" autocomplete="off" placeholder="LQ-XXXX-XXXX-XXXX"></label>' +
+      '<p class="small" id="si_msg" style="min-height:20px;color:var(--red);margin:10px 0 4px"></p><button class="btn pri full" style="min-height:52px;font-size:17px" data-act="obsignin">Sign in</button>' +
+      '<button class="btn ghost full" style="margin-top:10px" data-act="obsendkey">Email me my license key</button><p class="tiny mute" style="text-align:center;margin-top:14px">Not a customer yet? <button class="lnk" data-ob="welcome">Go back</button> and explore a sample or start a free trial.</p></div>';
+    if (step === "size") return top + '<div class="ob">' + (paid() ? "" : '<button class="lnk obback" data-ob="welcome">‹ Back</button>') + '<div class="eyebrow">Step 1 of 2</div><h1>How big is your business?</h1><p class="mute">Yearly revenue. We\'ll show you Liquara running a company your size.</p>' + coFinder("ob") + '<div class="ordiv"><span>or pick a size</span></div><div class="obgrid">' + SIZES.map(function (x) { return '<button class="opt" data-size="' + x[0] + '"><div class="ic">' + ic("data") + '</div><div><b>' + x[1] + '</b><span>' + ({ s1: "Owner-run shops and studios", s2: "Growing small businesses", s3: "Mid-size companies with a finance team", s4: "Large companies, several entities", s5: "Enterprises and groups" })[x[0]] + "</span></div></button>"; }).join("") + "</div></div>";
     if (step === "industry") return top + '<div class="ob"><div class="eyebrow">Step 2 of 2</div><h1>What kind of business?</h1><p class="mute">Used to compare you with businesses like yours.</p><div class="chips" style="flex-wrap:wrap">' + INDUSTRIES.map(function (x) { return '<button class="chip" data-ind="' + x[0] + '">' + x[1] + "</button>"; }).join("") + '</div><button class="btn ghost" style="margin-top:18px" data-ob="size">Back</button></div>';
     var cc = S.co ? '<div class="cocard" style="margin-bottom:16px"><div class="grow"><div class="tiny mute">We found your company</div><b>' + esc(S.co.name) + "</b>" + (S.co.tickers && S.co.tickers[0] ? ' <span class="chip">' + esc(S.co.tickers[0]) + "</span>" : "") + '<div class="tiny mute">' + esc([S.co.sector, [S.co.city, S.co.state].filter(Boolean).join(", "), S.co.revenue ? "~" + m(S.co.revenue) + " revenue" : ""].filter(Boolean).join(" · ")) + '</div></div></div>' : "";
     if (paid() && !S.demo) return top + '<div class="ob"><h1>' + (S.company ? "Welcome, " + esc(S.company) : "You're all set") + '</h1><p class="mute">Your license is active' + (S.size ? " and your company is set up" : "") + '. Add your bank file or connect your systems to see your own numbers.</p>' + cc + '<button class="btn pri full" data-act="pick">Add my bank file</button><button class="btn ghost full" style="margin-top:10px" data-act="obdata">Other ways to connect</button><button class="btn ghost full" style="margin-top:10px" data-act="syncnow">Bring in my data from my other device</button></div>';
@@ -1605,6 +1624,25 @@
     if (d.scndel) { S.scenarios.splice(+d.scndel, 1); saveS(); render(); return; }
     var A_ = d.act;
     if (A_ === "install") { if (!INSTALL) return; INSTALL.prompt(); try { await INSTALL.userChoice; } catch (er) { } INSTALL = null; render(); return; }
+    if (A_ === "obtrial") { ST.gateMsg = "Pick a plan to start your 14-day free trial. You won't be charged until it ends."; ST.ob = "size"; S.size = S.size || "s2"; S.industry = S.industry || "other"; S.demo = DEMO.pick ? DEMO.pick(S.industry, S.size) : "bakery"; saveRaw(); await analyze(); ST.tab = "plans"; render(); window.scrollTo(0, 0); return; }
+    if (A_ === "obsignin" || A_ === "obsendkey") {
+      var sem = (document.getElementById("si_em") || {}).value || "", skey = ((document.getElementById("si_key") || {}).value || "").trim(), smsg = document.getElementById("si_msg"), say = function (x, ok) { if (smsg) { smsg.textContent = x; smsg.style.color = ok ? "var(--green)" : "var(--red)"; } };
+      sem = sem.trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sem)) { say("Enter the email you subscribed with."); return; }
+      if (!helperReady()) { say("Sign-in isn't available right now. Email support@getliquara.com."); return; }
+      S.lastEmail = sem; saveRaw();
+      if (A_ === "obsendkey") { t.disabled = true; try { await helper("/account/sendkey", { email: sem }); say("If that email has a Liquara plan, your key is on its way. Check your inbox and spam.", true); } catch (er) { say(er.message); } t.disabled = false; return; }
+      if (!skey) { say("Paste the license key from your welcome email."); return; }
+      t.disabled = true; t.textContent = "Signing in…";
+      try {
+        await helper("/account/keylogin", { email: sem, key: skey });
+        delete S.demo; saveRaw();
+        await activateKey(skey);
+        if (!ST.res) { ST.ob = S.size ? (S.industry ? "start" : "industry") : "size"; }
+        else { ST.ob = null; ST.tab = "home"; }
+        toast("Signed in. Welcome back" + (S.company ? ", " + S.company : "") + "."); render(); window.scrollTo(0, 0);
+      } catch (er) { say(er.message); t.disabled = false; t.textContent = "Sign in"; }
+      return;
+    }
     if (A_ === "syncnow") { if (!paid()) { toast("Add your license key first"); return; } if (S.sync === false) { S.sync = true; saveRaw(); } toast("Syncing…"); var got = await syncPull(false); if (!got) { await syncPush(false); toast(S.syncErr ? "Couldn't sync: " + S.syncErr : "Up to date"); } render(); return; }
     if (A_ === "synctoggle") { S.sync = S.sync === false; saveRaw(); if (S.sync) syncPush(false); render(); return; }
     if (A_ === "obdata") { ST.obData = true; S.demo = undefined; delete S.demo; saveRaw(); ST.tab = "data"; ST.res = ST.res || null; render(); return; }
