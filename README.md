@@ -9,4 +9,6 @@ Cash intelligence connected to the heart of your business.
 - `config.js` – put the helper address and Stripe publishable key here
 - `setup-keys.html` – makes the license key pair, in your browser only
 
-© 2026 Mark Joseph.
+Founded and developed by Mark Joseph.
+
+© 2026 Liquara LLC.
