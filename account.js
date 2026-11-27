@@ -1,7 +1,7 @@
 /* Liquara: My account (sign in with email + license key, or email + password) */
 (function () {
   var W = (window.LQ_CONFIG && window.LQ_CONFIG.worker || "").replace(/\/+$/, ""), el = document.getElementById("acct"), TK = "lq_acct", tab = "key", me = null, msg = "";
-  var DL = "https://github.com/quuxin2-a11y/liquara/releases/latest/download/liquara.apk";
+  var DL = "/liquara.apk";
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function tok() { try { return localStorage.getItem(TK) || ""; } catch (e) { return ""; } }
   function setTok(t) { try { if (t) localStorage.setItem(TK, t); else localStorage.removeItem(TK); } catch (e) { } }
