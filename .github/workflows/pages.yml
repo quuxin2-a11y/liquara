@@ -2,9 +2,13 @@ name: Deploy website
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Build APK"]
+    types: [completed]
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency:
@@ -23,6 +27,41 @@ jobs:
           mkdir _site
           for f in *.html *.js *.css *.png *.jpg *.jpeg *.svg *.webp *.gif *.ico *.webmanifest CNAME; do cp "$f" _site/; done
           ls _site
+      - name: Add the Android app to the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # When an app build has just finished, wait for any other app build that is still running,
+          # so the newest app is the one that goes on the site.
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+            for i in $(seq 1 40); do
+              busy=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow apk.yml --limit 20 --json status --jq '[.[] | select(.status != "completed")] | length' 2>/dev/null || echo 0)
+              case "$busy" in ''|*[!0-9]*) busy=0 ;; esac
+              if [ "$busy" -eq 0 ]; then break; fi
+              echo "Another app build is still running. Checking again in 15 seconds."
+              sleep 15
+            done
+          fi
+          # Copy the app from the latest release into the site.
+          # If it cannot be fetched, stop here so the live site stays exactly as it is.
+          ok=""
+          for try in 1 2 3 4 5 6; do
+            if gh release download latest --repo "$GITHUB_REPOSITORY" --pattern liquara.apk --dir _site --clobber &&
+               [ "$(stat -c %s _site/liquara.apk 2>/dev/null || echo 0)" -gt 1000000 ] &&
+               unzip -tqq _site/liquara.apk; then
+              ok=1
+              break
+            fi
+            echo "The app was not ready on try $try. Waiting 20 seconds."
+            sleep 20
+          done
+          if [ -z "$ok" ]; then
+            echo "::error::Could not get liquara.apk from the latest release, so the website was left as it was."
+            exit 1
+          fi
+          cd _site
+          sha256sum liquara.apk > liquara.apk.sha256
+          ls -l liquara.apk
       - id: name
         run: echo "artifact=site-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@v3
