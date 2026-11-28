@@ -125,6 +125,8 @@
   /* ---------- corporate bank statement formats ---------- */
   function yymmdd(s) { s = clean(s); if (!/^\d{6}$/.test(s)) return ""; return "20" + s.slice(0, 2) + "-" + s.slice(2, 4) + "-" + s.slice(4, 6); }
   /* BAI2 (US banks): 02 group date, 03 account and balances, 16 transactions, 88 continuation, 49 account end */
+  /* a currency is three capital letters and nothing else: a bank file is never allowed to put anything else on screen */
+  function okCcy(c) { c = String(c == null ? "" : c).trim().toUpperCase(); return /^[A-Z]{3}$/.test(c) ? c : ""; }
   function parseBAI2(text) {
     var lines = String(text).replace(/\r/g, "").split("\n"), rows = [], date = "", ccy = "", close = null, recs = [], cur = null;
     lines.forEach(function (l) { l = l.replace(/\/\s*$/, ""); if (!l) return; if (/^88,/.test(l) && cur) cur.push.apply(cur, l.slice(3).split(",")); else { cur = l.split(","); recs.push(cur); } });
@@ -135,7 +137,7 @@
       else if (t === "16") { var code = +r[1], amt = +r[2] / 100, credit = code >= 100 && code < 400, desc = r.slice(6).join(" ").trim() || r.slice(4, 6).join(" ").trim(); if (!isFinite(amt)) return; rows.push({ Date: date, Amount: (credit ? amt : -amt).toFixed(2), Description: desc, Balance: "" }); }
       else if (t === "49" && rows.length && close != null) rows[rows.length - 1].Balance = close.toFixed(2);
     });
-    return { header: ["Date", "Amount", "Description", "Balance"], rows: rows, currency: ccy || null, format: "BAI2" };
+    return { header: ["Date", "Amount", "Description", "Balance"], rows: rows, currency: okCcy(ccy) || null, format: "BAI2" };
   }
   /* SWIFT MT940 */
   function parseMT940(text) {
@@ -249,7 +251,7 @@
       var t = src.table, inf = src.inferred || infer(t, src.name), map = inf.map, kind = src.kind || inf.kind, SC = src.scale || 1;
       function amt(v) { var x = parseAmount(v); return x == null ? null : x * SC; }
       M.sources.push({ name: src.name, kind: kind, rows: t.rows.length, confidence: inf.confidence, map: map, missing: inf.missing, origin: src.origin || "file" });
-      var CCY = src.currency || t.currency || M.base;
+      var CCY = okCcy(src.currency) || okCcy(t.currency) || M.base;
       if (kind === "bank") {
         var lastBal = null, firstRow = null;
         t.rows.forEach(function (r) {

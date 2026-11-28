@@ -263,3 +263,19 @@ body:not(.home) section{padding:70px 0}
 /* legal + 404 pages */
 .doc{padding-top:60px;padding-bottom:80px}.doc h1{font-size:clamp(36px,6vw,56px);margin:8px 0 6px}.doc h2{font-size:22px;margin:30px 0 8px;font-family:var(--sans);font-weight:700}.doc p{color:#c3cbe0;line-height:1.7}
 .nf{padding-top:90px;padding-bottom:120px;text-align:left}.nf h1{font-size:clamp(40px,7vw,72px);margin:10px 0}
+
+/* keyed download of the Android app */
+.getapp{margin-top:22px;max-width:620px}
+.getapp label{display:block;margin:0 0 8px;color:var(--ink)}
+.dlrow{flex-wrap:wrap;align-items:stretch}
+.dlin{flex:1 1 230px;min-width:0;background:#070b16;border:1px solid var(--line);border-radius:999px;padding:14px 20px;color:var(--ink);font:inherit;font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.dlin::placeholder{color:var(--dim);font-weight:600}
+.dlin:focus{outline:none;border-color:var(--lime)}
+#dlmsg.dlbad{color:#ffb3a7}#dlmsg.dlok{color:var(--green)}
+.amsg.ok{color:var(--green)}
+.anote{background:rgba(127,180,255,.08);border:1px solid rgba(127,180,255,.28);border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--mute);margin:0 auto 18px;max-width:860px}
+
+/* keyboard and screen-reader users can jump past the menu */
+.skip{position:absolute;left:-9999px;top:8px;z-index:1000;background:var(--lime);color:#081022;font-weight:700;padding:10px 18px;border-radius:999px;text-decoration:none}
+.skip:focus{left:8px}
+#content{display:block;height:0;outline:0}

@@ -574,3 +574,9 @@ html.web .obw h1 em { font-weight: 400; }
 .pill.due { border-color: rgba(255,107,90,.6); background: rgba(255,107,90,.14); color: var(--red); }
 .menusep { height: 1px; background: var(--line2); margin: 10px 0; }
 .opt span { display: block; font-size: 12.5px; color: var(--mute); font-weight: 400; }
+
+/* in the checkout box, the terms and any message sit on the dark page (only Stripe's card form is white) */
+.cobox .panel.coterms,.cobox .panel.note{background:#0e1527;border:1px solid rgba(200,255,77,.45);border-radius:16px;padding:14px 16px;margin:0 0 10px;color:var(--ink);font-size:14px;line-height:1.5}
+.cobox .panel.note{border-color:rgba(255,196,87,.5)}
+.cobox .panel.coterms b,.cobox .panel.note b{color:var(--ink)}
+.cobox .panel.coterms .mute{color:var(--mute)}

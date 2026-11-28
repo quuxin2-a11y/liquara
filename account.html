@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My account · Liquara</title>
 <meta name="description" content="Liquara reads any financial data, from any bank, forecasts cash with odds, tests itself on your own history, finds savings and answers the questions owners, CFOs and boards ask.">
@@ -11,18 +12,19 @@
 <meta property="og:title" content="Liquara · Cash intelligence">
 <meta property="og:description" content="Know where your cash is going, with odds. From corner shops to $1B groups.">
 <meta property="og:image" content="site-desktop.jpg">
-<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload"){sessionStorage.setItem("lq_reload","1");location.replace("app")}else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
+<script src="pre.js"></script>
 <link rel="stylesheet" href="site.css">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
 <script src="config.js"></script>
 <script src="analytics.js" defer></script>
 </head>
 <body class="acctpage">
-<header class="abar"><a class="brand" href="./" aria-label="Back to the Liquara website"><img src="logo.svg" alt="" width="30" height="30"><span>Liquara<span aria-hidden="true" style="font-size:.5em;font-weight:700;margin-left:2px;position:relative;top:-.72em;opacity:.85">™</span></span></a><span class="abar-t">My account</span></header>
+<a class="skip" href="#content">Skip to content</a>
+<header class="abar"><a class="brand" href="./" aria-label="Back to the Liquara website"><img src="logo.svg" alt="" width="30" height="30"><span>Liquara<span aria-hidden="true" style="font-size:.5em;font-weight:700;margin-left:2px;position:relative;top:-.72em;opacity:.85">™</span></span></a><span class="abar-t">My account</span></header><span id="content" tabindex="-1"></span>
 <main class="acct wrap"><div id="acct"><div class="acard center"><span class="aspin"></span></div></div></main>
 <footer class="afoot"><a href="./">← Back to getliquara.com</a> · <a href="privacy">Privacy</a> · <a href="terms">Terms</a> · <a href="mailto:support@getliquara.com">support@getliquara.com</a></footer>
 <script src="account.js"></script>
+<link rel="stylesheet" href="fonts.css">
 </body>
 </html>

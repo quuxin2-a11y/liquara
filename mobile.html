@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Liquara mobile app · Your cash, in your pocket</title>
 <meta name="description" content="The Liquara app for Android: your cash forecast, alerts, loans, sector news and three views in your pocket. Same license as the website.">
@@ -11,14 +12,14 @@
 <meta property="og:title" content="Liquara · Cash intelligence">
 <meta property="og:description" content="Know where your cash is going, with odds. From corner shops to $1B groups.">
 <meta property="og:image" content="site-desktop.jpg">
-<script>document.documentElement.className+=" js";try{if(/\.html$/.test(location.pathname))history.replaceState(null,"",location.pathname.replace(/(index)?\.html$/,"")+location.search+location.hash);var n=performance.getEntriesByType("navigation")[0];if(sessionStorage.getItem("lq_inapp")==="1"&&n&&n.type==="reload"){sessionStorage.setItem("lq_reload","1");location.replace("app")}else sessionStorage.removeItem("lq_inapp")}catch(e){}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
+<script src="pre.js"></script>
 <link rel="stylesheet" href="site.css">
+<script src="config.js"></script>
 <script src="analytics.js" defer></script>
 </head>
 <body class="home mobilepage">
-<header class="nav"><div class="wrap row"><a class="brand" href="./" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30"><span>Liquara<span aria-hidden="true" style="font-size:.5em;font-weight:700;margin-left:2px;position:relative;top:-.72em;opacity:.85">™</span></span></a><nav><a href="./#how">How it works</a><a href="./#views">Views</a><a href="./#savings">Savings</a><a href="./#pricing">Pricing</a><a href="./#founder">About</a><a href="./#contact">Contact</a><a href="account">My account</a></nav><div class="hbtns"><a class="btn pri appbtn" href="mobile"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 14h4v-1h-4z"/></svg><span class="l">Mobile app</span><span class="s">App</span></a><a class="btn pri demobtn" href="app#demo">Demo</a></div></div></header>
+<a class="skip" href="#content">Skip to content</a>
+<header class="nav"><div class="wrap row"><a class="brand" href="./" aria-label="Liquara home"><img src="logo.svg" alt="" width="30" height="30"><span>Liquara<span aria-hidden="true" style="font-size:.5em;font-weight:700;margin-left:2px;position:relative;top:-.72em;opacity:.85">™</span></span></a><nav><a href="./#how">How it works</a><a href="./#views">Views</a><a href="./#savings">Savings</a><a href="./#pricing">Pricing</a><a href="./#founder">About</a><a href="./#contact">Contact</a><a href="account">My account</a></nav><div class="hbtns"><a class="btn pri appbtn" href="mobile"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 14h4v-1h-4z"/></svg><span class="l">Mobile app</span><span class="s">App</span></a><a class="btn pri demobtn" href="app#demo">Demo</a></div></div></header><span id="content" tabindex="-1"></span>
 <nav class="mnav"><a href="./#how">How it works</a><a href="./#views">Views</a><a href="./#savings">Savings</a><a href="./#pricing">Pricing</a><a href="./#founder">About</a><a href="./#faq">FAQ</a><a href="account">My account</a><a href="./#contact">Contact</a></nav>
 
 <section class="hero mhero" id="top">
@@ -28,8 +29,12 @@
       <div class="eyebrow rv">Mobile app</div>
       <h1 class="rv">Your cash, <em>in your pocket.</em></h1>
       <p class="lead rv">The same Liquara on your Android phone, as a real app. Same license, same numbers, same three views. Check Friday's balance from the job site, the kitchen or the airport.</p>
-      <div class="row cta rv"><a class="btn pri big" href="/liquara.apk">Download for Android</a><a class="btn ghost big" href="app">Use it in your browser</a></div>
-      <p class="tiny rv"><b>Already a customer?</b> Install the app, tap <b>Have a license key?</b> and paste your key. Your company, files and settings come over on their own.</p>
+      <div class="getapp rv" id="get">
+        <label class="tiny" for="dlkey"><b>Enter your license key to download the app</b></label>
+        <div class="row cta dlrow"><input class="dlin" id="dlkey" placeholder="LQ-XXXX-XXXX-XXXX" maxlength="24" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Your license key"><button class="btn pri big" id="dlgo" type="button">Download for Android</button></div>
+        <p class="tiny" id="dlmsg" role="status" aria-live="polite">Your key is in your Liquara welcome email and in <a href="account">My account</a>. No key yet? <a href="app#plans">Start your free 14-day trial</a>, or <a href="app#demo">try the demo in your browser</a>.</p>
+      </div>
+      <p class="tiny rv"><b>Why a key?</b> The app is for Liquara customers, so the download is only handed to people with a license. Once it's installed, tap <b>Have a license key?</b> and paste the same key. Your company, files and settings come over on their own.</p>
     </div>
     <div class="rv phones2 big"><img src="ph-owner.webp" alt="Liquara app: Owner view"><img src="ph-forecast.webp" alt="Liquara app: 13-week forecast"></div>
   </div>
@@ -72,12 +77,12 @@
   <div>
     <div class="eyebrow rv">Install</div><h2 class="rv">Ready in <em>two minutes.</em></h2>
     <ol class="msteps">
-      <li class="rv"><b>Download</b><span>Tap <strong>Download for Android</strong> on this page.</span></li>
+      <li class="rv"><b>Download</b><span>Enter your license key at the top of this page and tap <strong>Download for Android</strong>.</span></li>
       <li class="rv"><b>Open the file</b><span>Tap the download when it finishes. If your phone asks, allow installs from your browser. That's normal for apps installed outside the Play Store.</span></li>
       <li class="rv"><b>Install and open</b><span>Tap <strong>Install</strong>, then <strong>Open</strong>. Liquara appears on your home screen.</span></li>
       <li class="rv"><b>Bring your account</b><span>Customers: tap <strong>Have a license key?</strong> and paste the key from your email or from <a href="account">My account</a>. New here? Try a sample company first.</span></li>
     </ol>
-    <div class="row cta rv"><a class="btn pri big" href="/liquara.apk">Download for Android</a></div>
+    <div class="row cta rv"><a class="btn pri big" href="#get" data-getapp>Download for Android</a></div>
   </div>
   <div class="rv mside">
     <div class="card"><h3>On a computer</h3><p class="tiny">Open <a href="app">getliquara.com/app</a> in Chrome or Edge and choose <strong>Install</strong> (in the address bar, or the <strong>Install on your computer</strong> button in Settings). Liquara gets its own icon and window.</p></div>
@@ -89,18 +94,20 @@
 <section class="alt"><div class="wrap narrow">
   <div class="eyebrow rv">Questions</div><h2 class="rv">About the app</h2>
   <details class="rv"><summary>Does the app cost extra?</summary><p>No. Every plan includes the app. One license works on the website and your phones: up to 2 devices on Owner, 5 on Business and 25 on Enterprise.</p></details>
-  <details class="rv"><summary>Is it on Google Play?</summary><p>Not yet. It installs directly from this page. Your phone may ask you to allow installs from your browser the first time.</p></details>
+  <details class="rv"><summary>Is it on Google Play?</summary><p>Not yet. It downloads from this page with your license key. Your phone may ask you to allow installs from your browser the first time.</p></details>
   <details class="rv"><summary>Will my data from the website show up?</summary><p>Yes. With your license key entered, your company setup, files and settings sync between the website and the app. They're scrambled with your license key on your device before they're stored. You can turn sync off in Settings.</p></details>
-  <details class="rv"><summary>How do I update the app?</summary><p>Download it again from this page. If your phone says the app can't be updated, uninstall the old one first. Your data comes back when you paste your license key.</p></details>
+  <details class="rv"><summary>How do I update the app?</summary><p>Download it again from this page with your license key. If your phone says the app can't be updated, uninstall the old one first. Your data comes back when you paste your license key.</p></details>
   <details class="rv"><summary>Which phones does it work on?</summary><p>Most Android phones from the last several years. On iPhone or a computer, use Liquara in your browser.</p></details>
 </div></section>
 
 <section class="final"><canvas id="flow2" aria-hidden="true"></canvas><div class="wrap center">
   <h2 class="rv">Friday's balance, <em>in your pocket.</em></h2>
-  <div class="row cta rv" style="justify-content:center"><a class="btn pri big" href="/liquara.apk">Download for Android</a><a class="btn ghost big" href="app">Try it in your browser</a></div>
+  <div class="row cta rv" style="justify-content:center"><a class="btn pri big" href="#get" data-getapp>Download for Android</a><a class="btn ghost big" href="app">Try it in your browser</a></div>
 </div></section>
 
 <footer><div class="wrap row"><span><img src="logo.svg" alt="" width="22" height="22"> © 2026 Liquara LLC. All rights reserved.</span><span><a href="mailto:hello@getliquara.com">hello@getliquara.com</a> · <a href="https://www.instagram.com/getliquara/" target="_blank" rel="noopener me">Instagram</a> · <a href="https://x.com/getliquara" target="_blank" rel="noopener me">X</a> · <a href="account">My account</a> · <a href="mobile">Mobile app</a> · <a href="privacy">Privacy</a> · <a href="terms">Terms</a> · <a href="app">Open the app</a></span></div><p class="tiny wrap">Liquara LLC · 5900 Balcones Dr, Suite 22377, Austin, TX 78731, USA · <a href="tel:+16693303788" style="white-space:nowrap">(669) 330-3788</a></p><p class="tiny wrap" style="margin-top:4px">Liquara™ and the heart logo are trademarks of Liquara LLC. Sample companies shown are fictional. Liquara is not a bank and does not give financial, tax or legal advice.</p></footer>
 <script src="site.js"></script>
+<script src="mobile.js"></script>
+<link rel="stylesheet" href="fonts.css">
 </body>
 </html>
